@@ -46,6 +46,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    hypre_ParVector     *Ptemp = NULL;
    hypre_ParVector     *Ztemp = NULL;
    hypre_ParCSRMatrix **P_array;
+   hypre_ParCSRMatrix **Q_array;
    hypre_ParVector    *Residual_array;
    HYPRE_Int                **CF_marker_array;   
    HYPRE_Int                **dof_func_array;   
@@ -170,7 +171,23 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    HYPRE_Int nongalerk_num_tol = hypre_ParAMGDataNonGalerkNumTol (amg_data);
    HYPRE_Real *nongalerk_tol = hypre_ParAMGDataNonGalerkTol (amg_data); 
    HYPRE_Real nongalerk_tol_l = 0.0; 
+   HYPRE_Real nongalerk_tol_l_prev = 0.0;
    HYPRE_Real *nongal_tol_array = hypre_ParAMGDataNonGalTolArray (amg_data); 
+   HYPRE_Int nongalerk_type = hypre_ParAMGDataNonGalerkType(amg_data);
+   HYPRE_Int nongalerk_diag = (nongalerk_type - 2) > 0;
+   HYPRE_Int nongalerk_full = nongalerk_type && !nongalerk_diag;
+
+   /* communication data for diagonal lumping */
+   hypre_MPI_Request    *send_requests;
+   hypre_MPI_Request    *recv_requests;
+   HYPRE_Int           **send_buffer;
+   HYPRE_Int           **recv_buffer;
+   HYPRE_Int             num_recvs, num_variables, num_sends;
+   HYPRE_Int            *send_map_starts, *recv_vec_starts;
+   HYPRE_Int             row_start, row_end;
+   hypre_ParCSRCommPkg  *comm_pkg;
+   HYPRE_Int            *offd_i;
+   hypre_CSRMatrix      *offd;
 
    hypre_ParCSRBlockMatrix *A_H_block;
 
@@ -234,6 +251,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
 
    A_array = hypre_ParAMGDataAArray(amg_data);
    P_array = hypre_ParAMGDataPArray(amg_data);
+   Q_array = hypre_ParAMGDataQArray(amg_data);
    CF_marker_array = hypre_ParAMGDataCFMarkerArray(amg_data);
    dof_func_array = hypre_ParAMGDataDofFuncArray(amg_data);
    local_size = hypre_CSRMatrixNumRows(hypre_ParCSRMatrixDiag(A));
@@ -326,7 +344,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
 
    /* free up storage in case of new setup without prvious destroy */
 
-   if (A_array || A_block_array || P_array || P_block_array || CF_marker_array || dof_func_array)
+   if (A_array || A_block_array || P_array || P_block_array || Q_array || CF_marker_array || dof_func_array)
    {
       for (j = 1; j < old_num_levels; j++)
       {
@@ -363,6 +381,12 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
          {
             hypre_ParCSRBlockMatrixDestroy(P_block_array[j]);
             P_array[j] = NULL;
+         }
+
+         if (Q_array[j])
+         {
+            hypre_ParCSRMatrixDestroy(Q_array[j]);
+            Q_array[j] = NULL;
          }
 
       }
@@ -534,7 +558,14 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       P_array = hypre_CTAlloc(hypre_ParCSRMatrix*, max_levels-1);
    if (P_block_array == NULL && max_levels > 1)
       P_block_array = hypre_CTAlloc(hypre_ParCSRBlockMatrix*, max_levels-1);
-
+   if (Q_array == NULL && max_levels > 1)
+   {
+      Q_array = hypre_CTAlloc(hypre_ParCSRMatrix*, max_levels-1);
+      for (i = 0; i < max_levels-1; i++)
+      {
+         Q_array[i] = NULL;
+      }
+   }
 
    if (CF_marker_array == NULL)
       CF_marker_array = hypre_CTAlloc(HYPRE_Int*, max_levels);
@@ -596,6 +627,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    hypre_ParAMGDataAArray(amg_data) = A_array;
    hypre_ParAMGDataPArray(amg_data) = P_array;
    hypre_ParAMGDataRArray(amg_data) = P_array;
+   hypre_ParAMGDataQArray(amg_data) = Q_array;
 
    hypre_ParAMGDataABlockArray(amg_data) = A_block_array;
    hypre_ParAMGDataPBlockArray(amg_data) = P_block_array;
@@ -1943,9 +1975,10 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
             hypre_ParCSRMatrixDestroy(C); */
 
             /* Set NonGalerkin drop tol on each level */
+            nongalerk_tol_l_prev = nongalerk_tol_l;
             if (level < nongalerk_num_tol) nongalerk_tol_l = nongalerk_tol[level];
             if (nongal_tol_array) nongalerk_tol_l = nongal_tol_array[level];
-            if (nongalerk_tol_l > 0.0)
+            if (!nongalerk_type && nongalerk_tol_l > 0.0)
             {
             /* Build Non-Galerkin Coarse Grid */
                hypre_BoomerAMGBuildNonGalerkinCoarseOperator(&A_H, Q,
@@ -1959,7 +1992,16 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
                    hypre_MatvecCommPkgCreate(A_H);
 			
             }
-            hypre_ParCSRMatrixDestroy(Q);
+
+            /* Save Q for sparse Galerkin */
+            if (nongalerk_tol_l > 0.0 && nongalerk_type % 2)
+            {
+                Q_array[level] = Q;
+            }
+            else
+            {
+                hypre_ParCSRMatrixDestroy(Q);
+            }
 
 
             if (add_P_max_elmts || add_trunc_factor)
@@ -1969,7 +2011,10 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
             }
             /*else
                 hypre_MatvecCommPkgCreate(P_array[level]);  */
-            hypre_ParCSRMatrixDestroy(P);
+            if (nongalerk_type == 2 || nongalerk_type == 4)
+               P_array[level] = P;
+            else
+               hypre_ParCSRMatrixDestroy(P);
          }
          else
             P_array[level] = P; 
@@ -2010,6 +2055,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       else if (mult_addlvl == -1 || level < mult_addlvl)
       {
          /* Set NonGalerkin drop tol on each level */
+         nongalerk_tol_l_prev = nongalerk_tol_l;
          if (level < nongalerk_num_tol)
             nongalerk_tol_l = nongalerk_tol[level];
          if (nongal_tol_array) nongalerk_tol_l = nongal_tol_array[level];
@@ -2027,17 +2073,23 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
             if (num_procs > 1) hypre_MatvecCommPkgCreate(A_H);
             
             /* Build Non-Galerkin Coarse Grid */
-            hypre_BoomerAMGBuildNonGalerkinCoarseOperator(&A_H, Q,
+            if (!nongalerk_type)
+            {
+               hypre_BoomerAMGBuildNonGalerkinCoarseOperator(&A_H, Q,
                     0.333*strong_threshold, max_row_sum, num_functions, 
                     dof_func_array[level+1], S_commpkg_switch, CF_marker_array[level], 
                     /* nongalerk_tol, sym_collapse, lump_percent, beta );*/
                       nongalerk_tol_l,      1,            0.5,    1.0 );
             
-            if (!hypre_ParCSRMatrixCommPkg(A_H))
-                hypre_MatvecCommPkgCreate(A_H);
-            
+               if (!hypre_ParCSRMatrixCommPkg(A_H))
+                   hypre_MatvecCommPkgCreate(A_H);
+            }
+
             /* Delete AP */
-            hypre_ParCSRMatrixDestroy(Q);
+            if (nongalerk_type == 1 || nongalerk_type == 3)
+                Q_array[level] = Q;
+            else
+               hypre_ParCSRMatrixDestroy(Q);
          }
          else if (rap2)
          {
@@ -2066,7 +2118,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
          wall_time = time_getWallclockSeconds() - wall_time;
          hypre_printf("Proc = %d    Level = %d    Build Coarse Operator Time = %f\n",
                        my_id,level, wall_time);
-	 fflush(NULL);
+         fflush(NULL);
       }
 
       ++level;
@@ -2081,16 +2133,103 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       size = ((HYPRE_Real) fine_size )*.75;
       if (coarsen_type > 0 && coarse_size >= (HYPRE_Int) size)
       {
-	coarsen_type = 0;      
+         coarsen_type = 0;      
       }
 
-
+      /*-----------------------------------------------------------------------
+       * Sparsify if nongalerk_type is :
+       * 3 - diagonal sparse Galerkin
+       * 4 - diagonal hybrid Galerkin
+       *-----------------------------------------------------------------------*/
+      if (nongalerk_tol_l_prev > 0.0  && nongalerk_diag)
       {
-	 HYPRE_Int max_thresh = hypre_max(coarse_threshold, seq_threshold);
-         if ( (level == max_levels-1) || (coarse_size <= max_thresh) )
+         offd = hypre_ParCSRMatrixOffd(A_array[level-1]);
+         if (hypre_CSRMatrixNumCols(offd))
          {
-            not_finished_coarsening = 0;
+            hypre_NonGalerkinCompleteSparsityPattern(A_array[level-1],
+                     send_requests,
+                     recv_requests,
+                     recv_buffer);
          }
+         hypre_ParCSRMatrixUpdateSparseApprox(A_array[level-1], nongalerk_tol_l_prev);
+			
+         comm_pkg = hypre_ParCSRMatrixCommPkg(A_array[level-1]);
+         send_map_starts = hypre_ParCSRCommPkgSendMapStarts(comm_pkg);
+         recv_vec_starts = hypre_ParCSRCommPkgRecvVecStarts(comm_pkg);
+					
+         if (hypre_CSRMatrixNumCols(offd))
+         {
+            for (i = 0; i < num_sends + num_recvs; i++)
+            {
+               hypre_TFree(send_buffer[i]);
+                  hypre_TFree(recv_buffer[i]);
+            }
+
+            hypre_TFree(send_requests);
+            send_requests = NULL;
+            hypre_TFree(recv_requests);
+            recv_requests = NULL;
+            hypre_TFree(send_buffer);
+            send_buffer = NULL;
+            hypre_TFree(recv_buffer);
+            recv_buffer = NULL;
+         }
+      }
+     
+	  HYPRE_Int max_thresh = hypre_max(coarse_threshold, seq_threshold);
+      if ( (level == max_levels-1) || (coarse_size <= max_thresh) )
+      {
+         not_finished_coarsening = 0;
+      }
+
+      /*-----------------------------------------------------------------------
+       * Sparsify if nongalerk_type is :
+       * 3 - diagonal sparse Galerkin
+       * 4 - diagonal hybrid Galerkin
+       *-----------------------------------------------------------------------*/
+      else if (nongalerk_tol_l > 0.0 && nongalerk_diag)
+      {
+          //Q is AP if sparse Galerkin and Q is (\hat(A))P if hybrid Galerkin
+          hypre_ParCSRMatrix *Q = NULL;
+          if (nongalerk_type == 4)
+             Q = hypre_ParMatmul(A_array[level-1],P_array[level-1]);
+           else
+             Q = Q_array[level-1];
+					
+          offd = hypre_ParCSRMatrixOffd(A_array[level]);
+          if (hypre_CSRMatrixNumCols(offd))
+          {
+             offd_i = hypre_CSRMatrixI(offd);
+             num_variables = hypre_CSRMatrixNumRows(offd);
+             num_recvs = hypre_ParCSRCommPkgNumRecvs(
+                     hypre_ParCSRMatrixCommPkg(A_array[level]));
+             num_sends = hypre_ParCSRCommPkgNumSends(
+                     hypre_ParCSRMatrixCommPkg(A_array[level]));
+
+             send_requests = hypre_CTAlloc(hypre_MPI_Request, 
+                     num_sends + num_recvs);
+             recv_requests = hypre_CTAlloc(hypre_MPI_Request,
+                     num_sends + num_recvs);
+             recv_buffer = hypre_CTAlloc(HYPRE_Int *, num_sends + num_recvs);
+             send_buffer = hypre_CTAlloc(HYPRE_Int *, num_sends + num_recvs);
+						
+             hypre_ParAMGDataSendRequests(amg_data) = send_requests;
+             hypre_ParAMGDataRecvRequests(amg_data) = recv_requests;
+             hypre_ParAMGDataSendBuffer(amg_data) = send_buffer;
+             hypre_ParAMGDataRecvBuffer(amg_data) = recv_buffer;
+					
+             hypre_NonGalerkinInitSparsityPattern(Q,
+                     A_array[level],
+                     CF_marker_array[level-1],
+                     send_requests,
+                     recv_requests,
+                     send_buffer,
+                     recv_buffer);
+          }
+          //Destroy Q
+          hypre_ParCSRMatrixDestroy(Q);
+          if (nongalerk_type == 3)
+             Q_array[level-1] = NULL;
       }
    } 
 
@@ -2159,7 +2298,49 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    if (hypre_ParAMGDataSmoothNumLevels(amg_data) > num_levels-1)
       hypre_ParAMGDataSmoothNumLevels(amg_data) = num_levels;
    smooth_num_levels = hypre_ParAMGDataSmoothNumLevels(amg_data);
-   
+
+   /*-----------------------------------------------------------------------
+    * Sparsify if nongalerk_type is :
+    * 1 - sparse Galerkin
+    * 2 - hybrid Galerkin
+    *-----------------------------------------------------------------------*/
+   if (nongalerk_full)
+   {
+      hypre_ParCSRMatrix* Q;
+
+      for (level = 0; level < num_levels-1; level++)
+      {
+         /* Set non-Galerkin drop tolerance on each level */
+         if (level < nongalerk_num_tol)
+            nongalerk_tol_l = nongalerk_tol[level];
+         if (nongal_tol_array) nongalerk_tol_l = nongal_tol_array[level];
+
+         if (nongalerk_tol_l > 0.0)
+         {
+            if (nongalerk_type == 1)
+                Q = Q_array[level];
+            else
+                Q = hypre_ParMatmul(A_array[level], P_array[level]);
+
+            hypre_BoomerAMGBuildNonGalerkinCoarseOperator(&A_array[level+1], Q,
+                 0.333*strong_threshold, max_row_sum, num_functions,
+                 dof_func_array[level+1], S_commpkg_switch, CF_marker_array[level],
+                 nongalerk_tol_l,      1,            0.5,    1.0 );
+         
+            if (!hypre_ParCSRMatrixCommPkg(A_array[level+1]))
+               hypre_MatvecCommPkgCreate(A_array[level+1]);
+
+            hypre_ParCSRMatrixSetNumNonzeros(A_array[level+1]);
+            hypre_ParCSRMatrixSetDNumNonzeros(A_array[level+1]);
+         
+            hypre_ParCSRMatrixDestroy(Q);
+
+            if (nongalerk_type == 1)
+               Q_array[level] = NULL;
+         }
+      }
+   }
+
    /*-----------------------------------------------------------------------
     * Setup of special smoothers when needed
     *-----------------------------------------------------------------------*/

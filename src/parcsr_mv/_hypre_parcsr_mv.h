@@ -357,6 +357,17 @@ typedef struct hypre_ParCSRMatrix_struct
                                               no_global_partition option is used
                                               (compile-time option)*/
 
+   HYPRE_Real           *weighted_diag;
+   HYPRE_Int             sparse_approx;
+   HYPRE_Int            *col_map_offd_old;
+   hypre_CSRMatrix      *offd_old;
+   HYPRE_Int            *col_droptol_max;
+   HYPRE_Int            *row_droptol_max;
+   HYPRE_Int            *col_to_proc_map;
+   HYPRE_Int            *proc_row_map;
+   HYPRE_Int             droptol;
+   HYPRE_Int            *offd_pattern;
+
 } hypre_ParCSRMatrix;
 
 /*--------------------------------------------------------------------------
@@ -392,6 +403,16 @@ hypre_CSRMatrixNumCols(hypre_ParCSRMatrixDiag(matrix))
 #define hypre_ParCSRMatrixRowvalues(matrix)       ((matrix) -> rowvalues)
 #define hypre_ParCSRMatrixGetrowactive(matrix)    ((matrix) -> getrowactive)
 #define hypre_ParCSRMatrixAssumedPartition(matrix) ((matrix) -> assumed_partition)
+#define hypre_ParCSRMatrixWeightedDiag(matrix)    ((matrix) -> weighted_diag)
+#define hypre_ParCSRMatrixSparseApprox(matrix)    ((matrix) -> sparse_approx)
+#define hypre_ParCSRMatrixColMapOffdOld(matrix)   ((matrix) -> col_map_offd_old)
+#define hypre_ParCSRMatrixOffdOld(matrix)         ((matrix) -> offd_old)
+#define hypre_ParCSRMatrixColDroptolMax(matrix)   ((matrix) -> col_droptol_max)
+#define hypre_ParCSRMatrixColToProcMap(matrix)    ((matrix) -> col_to_proc_map)
+#define hypre_ParCSRMatrixRowDroptolMax(matrix)   ((matrix) -> row_droptol_max)
+#define hypre_ParCSRMatrixProcRowMap(matrix)      ((matrix) -> proc_row_map)
+#define hypre_ParCSRMatrixDroptol(matrix)         ((matrix) -> droptol)
+#define hypre_ParCSRMatrixOffdPattern(matrix)     ((matrix) -> offd_pattern)
 
 /*--------------------------------------------------------------------------
  * Parallel CSR Boolean Matrix
@@ -833,6 +854,10 @@ HYPRE_Int hypre_ParCSRMatrixCopy ( hypre_ParCSRMatrix *A , hypre_ParCSRMatrix *B
 HYPRE_Int hypre_FillResponseParToCSRMatrix ( void *p_recv_contact_buf , HYPRE_Int contact_size , HYPRE_Int contact_proc , void *ro , MPI_Comm comm , void **p_send_response_buf , HYPRE_Int *response_message_size );
 hypre_ParCSRMatrix *hypre_ParCSRMatrixCompleteClone ( hypre_ParCSRMatrix *A );
 hypre_ParCSRMatrix *hypre_ParCSRMatrixUnion ( hypre_ParCSRMatrix *A , hypre_ParCSRMatrix *B );
+HYPRE_Int hypre_ParCSRMatrixUpdateSparseApprox ( hypre_ParCSRMatrix *A, HYPRE_Real droptol );
+HYPRE_Int hypre_ParCSRMatrixRowDroptolIdx ( hypre_ParCSRMatrix *A, HYPRE_Int row, HYPRE_Int col, HYPRE_Int *proc_ctr );
+HYPRE_Int hypre_ParCSRMatrixCreateProcRowMap ( hypre_ParCSRMatrix *A );
+HYPRE_Int hypre_ParCSRMatrixMapColsToProcs ( hypre_ParCSRMatrix *A );
 
 /* parcsr_matrix.c */
 

@@ -283,6 +283,15 @@ HYPRE_Int HYPRE_BoomerAMGSetNonGalerkinTol (HYPRE_Solver solver,
                                           HYPRE_Real  nongalerkin_tol);
 
 /**
+ * (Optional) Defines the non-Galerkin sparsify type
+ * 0 for original non-Galerkin
+ * 1 for sparse Galerkin
+ * 2 for hybrid Galerkin
+ **/
+HYPRE_Int HYPRE_BoomerAMGSetNonGalerkType (HYPRE_Solver solver,
+                                           HYPRE_Int    nongalerk_type);
+
+/**
  * (Optional) Defines the level specific non-Galerkin drop-tolerances
  * for sparsifying coarse grid operators and thus reducing communication. 
  * A drop-tolerance of 0.0 means to skip doing non-Galerkin on that 

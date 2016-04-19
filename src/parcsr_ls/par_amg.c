@@ -315,6 +315,7 @@ hypre_BoomerAMGCreate()
    hypre_ParAMGDataAArray(amg_data) = NULL;
    hypre_ParAMGDataPArray(amg_data) = NULL;
    hypre_ParAMGDataRArray(amg_data) = NULL;
+   hypre_ParAMGDataQArray(amg_data) = NULL;
    hypre_ParAMGDataCFMarkerArray(amg_data) = NULL;
    hypre_ParAMGDataVtemp(amg_data)  = NULL;
    hypre_ParAMGDataRtemp(amg_data)  = NULL;
@@ -457,6 +458,9 @@ hypre_BoomerAMGDestroy( void *data )
         if (hypre_ParAMGDataPArray(amg_data)[i-1])
            hypre_ParCSRMatrixDestroy(hypre_ParAMGDataPArray(amg_data)[i-1]);
 
+        if (hypre_ParAMGDataQArray(amg_data)[i-1])
+           hypre_ParCSRMatrixDestroy(hypre_ParAMGDataQArray(amg_data)[i-1]);
+
 	hypre_TFree(hypre_ParAMGDataCFMarkerArray(amg_data)[i-1]);
 
         /* get rid of any block structures */ 
@@ -506,6 +510,7 @@ hypre_BoomerAMGDestroy( void *data )
    hypre_TFree(hypre_ParAMGDataABlockArray(amg_data));
    hypre_TFree(hypre_ParAMGDataPBlockArray(amg_data));
    hypre_TFree(hypre_ParAMGDataPArray(amg_data));
+   hypre_TFree(hypre_ParAMGDataQArray(amg_data));
    hypre_TFree(hypre_ParAMGDataCFMarkerArray(amg_data));
    if (hypre_ParAMGDataRtemp(amg_data))
       hypre_ParVectorDestroy(hypre_ParAMGDataRtemp(amg_data));
@@ -3727,6 +3732,16 @@ hypre_BoomerAMGSetNonGalerkTol( void   *data,
   hypre_ParAMGDataNonGalerkNumTol(amg_data) = nongalerk_num_tol;
   hypre_ParAMGDataNonGalerkTol(amg_data) = nongalerk_tol;
   return hypre_error_flag;
+}
+
+HYPRE_Int
+hypre_BoomerAMGSetNonGalerkType( void  *data,
+                             HYPRE_Int  nongalerk_type)
+{
+   hypre_ParAMGData *amg_data = data;
+
+   hypre_ParAMGDataNonGalerkType(amg_data) = nongalerk_type;
+   return hypre_error_flag;
 }
 
 HYPRE_Int

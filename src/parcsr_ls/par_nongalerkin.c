@@ -2283,3 +2283,352 @@ hypre_BoomerAMGBuildNonGalerkinCoarseOperator( hypre_ParCSRMatrix **RAP_ptr,
 }
 
 
+/*
+ * Construct sparsity pattern based on R_I A P, plus entries required by drop tolerance
+ */
+HYPRE_Int
+hypre_NonGalerkinInitSparsityPattern(hypre_ParCSRMatrix *R_IAP,
+					hypre_ParCSRMatrix *RAP,
+					HYPRE_Int * CF_marker,
+					hypre_MPI_Request *send_requests,
+					hypre_MPI_Request *recv_requests,
+					HYPRE_Int **send_buffer,
+					HYPRE_Int **recv_buffer)
+{
+	/* MPI Communicator */
+	MPI_Comm            comm                      = hypre_ParCSRMatrixComm(RAP);
+	
+	/* Declare R_IAP */
+	hypre_CSRMatrix     *R_IAP_diag               = hypre_ParCSRMatrixDiag(R_IAP);
+	HYPRE_Int           *R_IAP_diag_i             = hypre_CSRMatrixI(R_IAP_diag);
+	HYPRE_Int           *R_IAP_diag_j             = hypre_CSRMatrixJ(R_IAP_diag);
+	HYPRE_Real          *R_IAP_diag_data          = hypre_CSRMatrixData(R_IAP_diag);
+	HYPRE_Int            first_col_diag_R_IAP     = hypre_ParCSRMatrixFirstColDiag(R_IAP);
+	
+	hypre_CSRMatrix     *R_IAP_offd               = hypre_ParCSRMatrixOffd(R_IAP);
+	HYPRE_Int           *R_IAP_offd_i             = hypre_CSRMatrixI(R_IAP_offd);
+	HYPRE_Int           *R_IAP_offd_j             = hypre_CSRMatrixJ(R_IAP_offd);
+	HYPRE_Real          *R_IAP_offd_data          = hypre_CSRMatrixData(R_IAP_offd);
+	HYPRE_Int           *col_map_offd_R_IAP       = hypre_ParCSRMatrixColMapOffd(R_IAP);
+	HYPRE_Int            num_cols_R_IAP_offd      = hypre_CSRMatrixNumCols(R_IAP_offd);
+	
+	/* Declare RAP */
+	hypre_CSRMatrix     *RAP_diag             = hypre_ParCSRMatrixDiag(RAP);
+	HYPRE_Int           *RAP_diag_i           = hypre_CSRMatrixI(RAP_diag);
+	HYPRE_Real          *RAP_diag_data        = hypre_CSRMatrixData(RAP_diag);
+	HYPRE_Int           *RAP_diag_j           = hypre_CSRMatrixJ(RAP_diag);
+	HYPRE_Int            first_col_diag_RAP   = hypre_ParCSRMatrixFirstColDiag(RAP);
+	HYPRE_Int            num_cols_diag_RAP    = hypre_CSRMatrixNumCols(RAP_diag);
+	HYPRE_Int            last_col_diag_RAP    = first_col_diag_RAP + num_cols_diag_RAP - 1;
+	
+	hypre_CSRMatrix     *RAP_offd             = hypre_ParCSRMatrixOffd(RAP);
+	HYPRE_Int           *RAP_offd_i           = hypre_CSRMatrixI(RAP_offd);
+	HYPRE_Real          *RAP_offd_data        = NULL;
+	HYPRE_Int           *RAP_offd_j           = hypre_CSRMatrixJ(RAP_offd);
+	HYPRE_Int           *col_map_offd_RAP     = hypre_ParCSRMatrixColMapOffd(RAP);
+	HYPRE_Int            num_cols_RAP_offd    = hypre_CSRMatrixNumCols(RAP_offd);
+
+	HYPRE_Int            num_variables        = hypre_CSRMatrixNumRows(RAP_diag);
+	
+	/* Declare A */
+	HYPRE_Int            num_fine_variables   = hypre_CSRMatrixNumRows(R_IAP_diag);
+	
+	/* Other Declarations */
+	HYPRE_Int ierr                                = 0;
+	HYPRE_Real          max_entry                 = 0.0;
+	HYPRE_Int           * rownz                   = NULL;
+	HYPRE_Int i, j, Cpt, row_start, row_end, global_row, global_col, local_col;
+	HYPRE_Int            row_start_R_IAP, row_end_R_IAP, global_col_R_IAP, R_IAP_counter;
+	HYPRE_Int            has_row_ended;
+	
+	/* Buffered Pattern Declarations */
+	hypre_ParCSRCommPkg *comm_pkg = hypre_ParCSRMatrixCommPkg(RAP);
+	HYPRE_Int            my_id, num_procs;
+	HYPRE_Int            ctr, start_ctr, send_col_id, send_row_id;
+	HYPRE_Int           *recv_vec_starts;
+	HYPRE_Int            num_recvs, *recv_procs;
+	HYPRE_Int           *send_map_starts, *send_map_elmts;
+	HYPRE_Int            num_sends, *send_procs;
+	HYPRE_Int            proc_start, proc_end;
+	HYPRE_Real zero_tol = 1.0e-12;
+	hypre_MPI_Status    status;
+	HYPRE_Real  value;
+	HYPRE_Int          *col_droptol_max;
+	HYPRE_Int          *row_droptol_max;
+	HYPRE_Int           R_IAP_col, RAP_col;	
+	HYPRE_Int           proc, old_proc;
+	HYPRE_Int           k, r, old_k, row_idx;
+	HYPRE_Int           col_start, col_end;
+	HYPRE_Int          *proc_row_map;
+	HYPRE_Int         droptol;
+
+	/* Buffered Pattern Initializations */
+	recv_vec_starts = hypre_ParCSRCommPkgRecvVecStarts(comm_pkg);
+	recv_procs = hypre_ParCSRCommPkgRecvProcs(comm_pkg);
+	num_recvs = hypre_ParCSRCommPkgNumRecvs(comm_pkg);
+	num_sends = hypre_ParCSRCommPkgNumSends(comm_pkg);
+	send_procs = hypre_ParCSRCommPkgSendProcs(comm_pkg);
+	send_map_starts = hypre_ParCSRCommPkgSendMapStarts(comm_pkg);
+	send_map_elmts = hypre_ParCSRCommPkgSendMapElmts(comm_pkg);
+
+
+	col_droptol_max = hypre_CTAlloc(HYPRE_Int, num_cols_RAP_offd);
+	row_droptol_max = hypre_CTAlloc(HYPRE_Int, send_map_starts[num_sends]);	
+	hypre_MPI_Comm_size(comm, &num_procs);
+	hypre_MPI_Comm_rank(comm, &my_id);
+	
+	/* Other Setup */
+	if (num_cols_RAP_offd)
+	{
+		RAP_offd_data        = hypre_CSRMatrixData(RAP_offd);
+		R_IAP_offd_data      = hypre_CSRMatrixData(R_IAP_offd);
+	}
+
+	for (i = 0; i < num_variables; i++)
+	{
+		row_start = RAP_offd_i[i];
+		row_end = RAP_offd_i[i+1];
+		hypre_qsort1(RAP_offd_j, RAP_offd_data, row_start, row_end-1 );
+	}
+
+	hypre_ParCSRMatrixMapColsToProcs(RAP);	
+	hypre_ParCSRMatrixCreateProcRowMap(RAP);
+	HYPRE_Int *col_to_proc_map = hypre_ParCSRMatrixColToProcMap(RAP);
+	proc_row_map = hypre_ParCSRMatrixProcRowMap(RAP);
+
+  	/***********************************************************************
+	 *******    For all entries in MinSparse
+	 *******    Set col_droptol_max to 2.0
+	 *******    Set row_droptol_max to 2.0
+	 **********************************************************************/
+	Cpt = -1; // Cpt contains the fine grid index of the i-th Cpt 
+	for(i = 0; i < num_variables; i++)
+	{
+		global_row = i+first_col_diag_RAP;
+		
+		// Find the next Coarse Point in CF_marker 
+		for(j = Cpt+1; j < num_fine_variables; j++)
+		{
+			if(CF_marker[j] == 1)   // Found Next C-point 
+			{
+				Cpt = j;
+				break;
+			}
+		}
+
+
+		max_entry = -1.0;
+		for(j = RAP_diag_i[i]; j < RAP_diag_i[i+1]; j++)
+		{
+			if( (RAP_diag_j[j] != i) && (max_entry < fabs(RAP_diag_data[j]) ) )
+			{   max_entry = fabs(RAP_diag_data[j]); }
+		}
+		for(j = RAP_offd_i[i]; j < RAP_offd_i[i+1]; j++)
+		{
+			{
+				if( max_entry < fabs(RAP_offd_data[j]) )
+				{   max_entry = fabs(RAP_offd_data[j]); }
+			}
+		}
+
+		/* Offdiag Portion */
+		row_start_R_IAP = R_IAP_offd_i[Cpt];
+		row_end_R_IAP = R_IAP_offd_i[Cpt+1];
+		row_start = RAP_offd_i[i];
+		row_end = RAP_offd_i[i+1];
+		/* Sort offd portion of RAP, R_IAP */
+		hypre_qsort1(R_IAP_offd_j, R_IAP_offd_data, row_start_R_IAP, row_end_R_IAP-1 );
+
+		if (row_start_R_IAP < row_end_R_IAP)
+		{
+			has_row_ended = 0;
+			R_IAP_counter = row_start_R_IAP;
+			global_col_R_IAP = col_map_offd_R_IAP[ R_IAP_offd_j[R_IAP_counter] ];
+		}
+		else has_row_ended = 1;
+		
+		for(j = row_start; j < row_end; j++)
+		{
+			local_col = RAP_offd_j[j];
+			global_col = col_map_offd_RAP[ local_col ];
+			value = fabs(RAP_offd_data[j]);		
+
+			//rowidx = hypre_ParCSRMatrixRowDroptolIdx(RAP, i, local_col);
+			row_idx = proc_row_map[j];		
+	
+			//If A_ij is not in the minimal sparsity pattern...
+			if (has_row_ended || global_col < global_col_R_IAP)
+			{
+				droptol = (int) (1000*value / max_entry);
+	
+				if (droptol > col_droptol_max[local_col]) 
+					col_droptol_max[local_col] = droptol;
+				if (row_idx != -1 && droptol > row_droptol_max[row_idx])
+					row_droptol_max[row_idx] = droptol;
+				
+
+			}
+            //Else, A_ij in R_IAP, so add to Pattern
+			else
+			{
+				
+				//Increase R_IAP row counter, if possible
+				if (R_IAP_counter < row_end_R_IAP - 1)
+				{
+					R_IAP_counter++;
+					global_col_R_IAP = col_map_offd_R_IAP[ R_IAP_offd_j[ R_IAP_counter ] ];
+				}
+				else
+				{
+					has_row_ended = 1;
+				}
+
+				col_droptol_max[local_col] = 2000;
+				if (row_idx != -1)
+				{
+
+					row_droptol_max[row_idx] = 2000;
+				}
+			}
+		}
+	}
+
+	/***************************************************************************
+	 *********   Send col_droptol_max and row_droptol_max
+	 *********   To the appropriate processors
+	 *********   And set up recieves
+	 **************************************************************************/ 
+	send_col_id = 2323;
+	send_row_id = 3232;
+
+	HYPRE_Int row_size;
+	HYPRE_Int col_size;
+
+	HYPRE_Int **recv_row_buffer = &recv_buffer[0];
+	HYPRE_Int **send_row_buffer = &send_buffer[0];
+	HYPRE_Int **recv_col_buffer = &recv_buffer[num_sends];
+	HYPRE_Int **send_col_buffer = &send_buffer[num_sends];
+
+	hypre_MPI_Request *recv_row_requests = &recv_requests[0];
+	hypre_MPI_Request *send_row_requests = &send_requests[0];
+	hypre_MPI_Request *recv_col_requests = &recv_requests[num_sends];
+	hypre_MPI_Request *send_col_requests = &send_requests[num_sends];
+
+	for (k = 0; k < num_sends; k++)
+	{
+		proc = send_procs[k];
+		row_start = send_map_starts[k];
+		row_end = send_map_starts[k+1];
+		send_row_buffer[k] = hypre_CTAlloc(HYPRE_Int, row_end - row_start);
+		recv_row_buffer[k] = hypre_CTAlloc(HYPRE_Int, row_end - row_start);
+		ctr = 0;
+		for (j = row_start; j < row_end; j++)
+		{
+			send_row_buffer[k][ctr++] = row_droptol_max[j];
+		}
+		hypre_MPI_Irecv(recv_row_buffer[k], ctr, HYPRE_MPI_INT, proc, send_col_id, comm, &recv_row_requests[k]);
+		hypre_MPI_Isend(send_row_buffer[k], ctr, HYPRE_MPI_INT, proc, send_row_id, comm, &send_row_requests[k]);
+	}
+
+    for (k = 0; k < num_recvs; k++)
+	{
+		proc = recv_procs[k];
+		row_start = recv_vec_starts[k];
+		if (k < num_recvs - 1) row_end = recv_vec_starts[k+1];
+		else row_end = num_cols_RAP_offd;
+		send_col_buffer[k] = hypre_CTAlloc(HYPRE_Int, row_end - row_start);
+		recv_col_buffer[k] = hypre_CTAlloc(HYPRE_Int, row_end - row_start);
+		ctr = 0;
+		for (j = row_start; j < row_end; j++)
+		{
+			send_col_buffer[k][ctr++] = col_droptol_max[j];
+		}
+		hypre_MPI_Irecv(recv_col_buffer[k], ctr, HYPRE_MPI_INT, proc, send_row_id, comm, &recv_col_requests[k]);
+		hypre_MPI_Isend(send_col_buffer[k], ctr, HYPRE_MPI_INT, proc, send_col_id, comm, &send_col_requests[k]);
+	}
+
+	hypre_ParCSRMatrixColDroptolMax(RAP) = col_droptol_max;
+	hypre_ParCSRMatrixRowDroptolMax(RAP) = row_droptol_max;
+	
+
+        return 0;
+
+}
+
+HYPRE_Int
+hypre_NonGalerkinCompleteSparsityPattern(hypre_ParCSRMatrix *RAP,
+													  hypre_MPI_Request *send_requests,
+													  hypre_MPI_Request *recv_requests,
+													  HYPRE_Int **recv_buffer)
+{
+	MPI_Comm            comm                  = hypre_ParCSRMatrixComm(RAP);
+	
+	/* Other Declarations */
+	HYPRE_Int ierr                                = 0;
+	HYPRE_Int i, j, k, r, row_start, row_end, global_row, global_col, local_col;
+	/* Buffered Pattern Declarations */
+	hypre_ParCSRCommPkg *comm_pkg = hypre_ParCSRMatrixCommPkg(RAP);
+	HYPRE_Int            proc;
+	HYPRE_Int            num_recvs, num_sends;
+	HYPRE_Int           *recv_vec_starts, *send_map_starts;	
+	
+	hypre_CSRMatrix     *RAP_offd = hypre_ParCSRMatrixOffd(RAP);
+	HYPRE_Int            num_cols_RAP_offd    = hypre_CSRMatrixNumCols(RAP_offd);
+
+	HYPRE_Int           *col_droptol_max = hypre_ParCSRMatrixColDroptolMax(RAP);
+	HYPRE_Int           *row_droptol_max = hypre_ParCSRMatrixRowDroptolMax(RAP);
+
+	HYPRE_Int            send_size, ctr;
+	HYPRE_Int            droptol;
+
+	hypre_MPI_Status status;
+	
+	/* Buffered Pattern Initializations */
+	num_recvs = hypre_ParCSRCommPkgNumRecvs(comm_pkg);
+	num_sends = hypre_ParCSRCommPkgNumSends(comm_pkg);
+	recv_vec_starts = hypre_ParCSRCommPkgRecvVecStarts(comm_pkg);
+	send_map_starts = hypre_ParCSRCommPkgSendMapStarts(comm_pkg);
+	send_size = num_sends + num_recvs;
+
+    for (k = 0; k < num_sends; k++)
+	{
+		hypre_MPI_Wait(&recv_requests[k], &status);
+		recv_requests[k] = hypre_MPI_REQUEST_NULL;
+		row_start = send_map_starts[k];
+		row_end = send_map_starts[k+1];
+		ctr = 0;
+		for (j = row_start; j < row_end; j++)
+		{
+			droptol = recv_buffer[k][ctr++];
+			if (droptol > row_droptol_max[j])		
+				row_droptol_max[j] = droptol;		
+		}
+	}
+
+	for (k = 0; k < num_recvs; k++)
+	{
+		hypre_MPI_Wait(&recv_requests[k+num_sends],&status);
+		recv_requests[k+num_sends] = hypre_MPI_REQUEST_NULL;
+		row_start = recv_vec_starts[k];
+		if (k < num_recvs - 1) row_end = recv_vec_starts[k+1];
+		else row_end = num_cols_RAP_offd;
+		ctr = 0;
+		for (j = row_start; j < row_end; j++)
+		{
+			droptol = recv_buffer[num_sends+k][ctr++];
+			if (droptol > col_droptol_max[j])
+				col_droptol_max[j] = droptol;
+		}
+	}
+	
+	for (k = 0; k < send_size; k++)
+	{
+		hypre_MPI_Wait(&send_requests[k],&status);
+		send_requests[k] = hypre_MPI_REQUEST_NULL;
+	}
+
+	return ierr;
+
+    return 0;
+	
+}

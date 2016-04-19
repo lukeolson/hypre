@@ -55,6 +55,11 @@ HYPRE_Int HYPRE_ParCSRMatrixRestoreRow( HYPRE_ParCSRMatrix matrix , HYPRE_Int ro
 HYPRE_Int HYPRE_CSRMatrixToParCSRMatrix( MPI_Comm comm , HYPRE_CSRMatrix A_CSR , HYPRE_Int *row_partitioning , HYPRE_Int *col_partitioning , HYPRE_ParCSRMatrix *matrix );
 HYPRE_Int HYPRE_ParCSRMatrixMatvec( HYPRE_Complex alpha , HYPRE_ParCSRMatrix A , HYPRE_ParVector x , HYPRE_Complex beta , HYPRE_ParVector y );
 HYPRE_Int HYPRE_ParCSRMatrixMatvecT( HYPRE_Complex alpha , HYPRE_ParCSRMatrix A , HYPRE_ParVector x , HYPRE_Complex beta , HYPRE_ParVector y );
+HYPRE_Int HYPRE_ParCSRMatrixUpdateSparseApprox( HYPRE_ParCSRMatrix matrix, HYPRE_Real droptol );
+HYPRE_Int HYPRE_ParCSRMatrixRowDroptolIdx( HYPRE_ParCSRMatrix matrix, HYPRE_Int row, HYPRE_Int col, HYPRE_Int *proc_ctr );
+HYPRE_Int HYPRE_ParCSRMatrixCreateProcRowMap( HYPRE_ParCSRMatrix matrix );
+HYPRE_Int HYPRE_ParCSRMatrixMapColsToProcs( HYPRE_ParCSRMatrix matrix );
+
 
 /* HYPRE_parcsr_vector.c */
 HYPRE_Int HYPRE_ParVectorCreate( MPI_Comm comm , HYPRE_Int global_size , HYPRE_Int *partitioning , HYPRE_ParVector *vector );

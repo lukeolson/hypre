@@ -98,6 +98,7 @@ typedef struct
    hypre_ParVector    **U_array;
    hypre_ParCSRMatrix **P_array;
    hypre_ParCSRMatrix **R_array;
+   hypre_ParCSRMatrix **Q_array;
    HYPRE_Int                **CF_marker_array;
    HYPRE_Int                **dof_func_array;
    HYPRE_Int                **dof_point_array;
@@ -144,6 +145,12 @@ typedef struct
    HYPRE_Real         *nongalerk_tol;
    HYPRE_Real          nongalerkin_tol;
    HYPRE_Real         *nongal_tol_array;
+   HYPRE_Int           nongalerk_type;
+
+   hypre_MPI_Request  *send_requests;
+   hypre_MPI_Request  *recv_requests;
+   HYPRE_Int         **send_buffer;
+   HYPRE_Int         **recv_buffer;
 
    /* data generated in the solve phase */
    hypre_ParVector   *Vtemp;
@@ -299,6 +306,7 @@ typedef struct
 #define hypre_ParAMGDataUArray(amg_data) ((amg_data)->U_array)
 #define hypre_ParAMGDataPArray(amg_data) ((amg_data)->P_array)
 #define hypre_ParAMGDataRArray(amg_data) ((amg_data)->R_array)
+#define hypre_ParAMGDataQArray(amg_data) ((amg_data)->Q_array)
 #define hypre_ParAMGDataDofFuncArray(amg_data) ((amg_data)->dof_func_array)
 #define hypre_ParAMGDataDofPointArray(amg_data) ((amg_data)->dof_point_array)
 #define hypre_ParAMGDataPointDofMapArray(amg_data) \
@@ -418,6 +426,12 @@ typedef struct
 #define hypre_ParAMGDataNonGalerkTol(amg_data) ((amg_data)->nongalerk_tol)
 #define hypre_ParAMGDataNonGalerkinTol(amg_data) ((amg_data)->nongalerkin_tol)
 #define hypre_ParAMGDataNonGalTolArray(amg_data) ((amg_data)->nongal_tol_array)
+#define hypre_ParAMGDataNonGalerkType(amg_data) ((amg_data)->nongalerk_type)
+
+#define hypre_ParAMGDataSendRequests(amg_data)   ((amg_data)->send_requests)
+#define hypre_ParAMGDataRecvRequests(amg_data)   ((amg_data)->recv_requests)
+#define hypre_ParAMGDataSendBuffer(amg_data)     ((amg_data)->send_buffer)
+#define hypre_ParAMGDataRecvBuffer(amg_data)     ((amg_data)->recv_buffer)
 
 #define hypre_ParAMGDataRAP2(amg_data) ((amg_data)->rap2)
 #define hypre_ParAMGDataKeepTranspose(amg_data) ((amg_data)->keepTranspose)

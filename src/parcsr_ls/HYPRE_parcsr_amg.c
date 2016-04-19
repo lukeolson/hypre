@@ -1604,6 +1604,16 @@ HYPRE_BoomerAMGSetNonGalerkTol (HYPRE_Solver solver,
    return (hypre_BoomerAMGSetNonGalerkTol ( (void *) solver, nongalerk_num_tol , nongalerk_tol ) );
 }
 
+ /*--------------------------------------------------------------------------
+ * HYPRE_BoomerAMGSetNonGalerkType
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_BoomerAMGSetNonGalerkType (HYPRE_Solver solver,
+                                 HYPRE_Int    nongalerk_type)
+{
+   return (hypre_BoomerAMGSetNonGalerkType ( (void *) solver, nongalerk_type ) );
+}
+
 /*--------------------------------------------------------------------------
  * HYPRE_BoomerAMGSetRAP2
  *--------------------------------------------------------------------------*/

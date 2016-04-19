@@ -357,3 +357,50 @@ HYPRE_ParCSRMatrixMatvecT( HYPRE_Complex      alpha,
                alpha, (hypre_ParCSRMatrix *) A,
                (hypre_ParVector *) x, beta, (hypre_ParVector *) y) );
 }
+
+/*--------------------------------------------------------------------------
+ * HYPRE_ParCSRMatrixUpdateSparseApprox
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_ParCSRMatrixUpdateSparseApprox( HYPRE_ParCSRMatrix matrix,
+                                      HYPRE_Real droptol )
+{
+    return ( hypre_ParCSRMatrixUpdateSparseApprox(
+                (hypre_ParCSRMatrix *) matrix, 
+                droptol );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_ParCSRMatrixRowDroptolIdx
+ *--------------------------------------------------------------------------*/
+HYPRE_Int 
+HYPRE_ParCSRMatrixRowDroptolIdx ( HYPRE_ParCSRMatrix matrix,
+                                  HYPRE_Int row,
+                                  HYPRE_Int col,
+                                  HYPRE_Int *proc_ctr )
+{
+    return hypre_ParCSRMatrixRowDroptolIdx( 
+            (hypre_ParCSRMatrix *) matrix, row, col, proc_ctr );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_ParCSRMatrixCreateProcRowMap
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_ParCSRMatrixCreateProcRowMap ( HYPRE_ParCSRMatrix matrix )
+{
+    return hypre_ParCSRMatrixCreateProcRowMap (
+            (hypre_ParCSRMatrix *) matrix );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_ParCSRMatrixMapColsToProcs
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_ParCSRMatrixMapColsToProcs ( HYPRE_ParCSRMatrix matrix )
+{
+    return hypre_ParCSRMatrixMapColsToProcs (
+            (hypre_ParCSRMatrix *) matrix );
+}
+
+

@@ -140,6 +140,8 @@ hypre_ParCSRMatrixCreate( MPI_Comm comm,
    hypre_ParCSRMatrixRowindices(matrix) = NULL;
    hypre_ParCSRMatrixRowvalues(matrix) = NULL;
    hypre_ParCSRMatrixGetrowactive(matrix) = 0;
+   hypre_ParCSRMatrixSparseApprox(matrix) = 0;
+   hypre_ParCSRMatrixDroptol(matrix) = 0.0;
 
    return matrix;
 }
@@ -182,6 +184,21 @@ hypre_ParCSRMatrixDestroy( hypre_ParCSRMatrix *matrix )
 
       if (hypre_ParCSRMatrixAssumedPartition(matrix))
          hypre_AssumedPartitionDestroy(hypre_ParCSRMatrixAssumedPartition(matrix));
+
+      if (hypre_ParCSRMatrixSparseApprox(matrix))
+      {
+          hypre_TFree(hypre_ParCSRMatrixWeightedDiag(matrix));
+          if (hypre_ParCSRMatrixColMapOffdOld(matrix))
+              hypre_TFree(hypre_ParCSRMatrixColMapOffdOld(matrix));
+          hypre_CSRMatrixDestroy(hypre_ParCSRMatrixOffdOld(matrix));
+      }
+
+      if (hypre_ParCSRMatrixColDroptolMax(matrix))
+          hypre_TFree(hypre_ParCSRMatrixColDroptolMax(matrix));
+      if (hypre_ParCSRMatrixRowDroptolMax(matrix))
+          hypre_TFree(hypre_ParCSRMatrixRowDroptolMax(matrix));
+      if (hypre_ParCSRMatrixColToProcMap(matrix))
+          hypre_TFree(hypre_ParCSRMatrixColToProcMap(matrix));
 
       hypre_TFree(matrix);
    }
@@ -2152,4 +2169,336 @@ hypre_ParCSRMatrix * hypre_ParCSRMatrixUnion( hypre_ParCSRMatrix * A,
    hypre_ParCSRMatrixGetrowactive( C ) = 0;
 
    return C;
+}
+
+/*--------------------------------------------------------------------------
+ * hypre_ParCSRMatrixUpdateSparseApprox
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int 
+hypre_ParCSRMatrixUpdateSparseApprox( hypre_ParCSRMatrix *matrix, HYPRE_Real droptol)
+{
+	if (!matrix)
+	{
+		hypre_error_in_arg(1);
+		return hypre_error_flag;
+	}
+
+	hypre_ParCSRMatrixDroptol(matrix) = droptol;
+
+	HYPRE_Int            i, j, k, row_start, row_end, local_col;
+	hypre_CSRMatrix     *diag = hypre_ParCSRMatrixDiag(matrix);
+	HYPRE_Int           *diag_i = hypre_CSRMatrixI(diag);
+	HYPRE_Real          *diag_data = hypre_CSRMatrixData(diag);
+	HYPRE_Real zero_tol = 1.0e-12;	
+	HYPRE_Int            local_num_rows = hypre_CSRMatrixNumRows(diag);
+
+	//If previously set, free weighted diagonal array
+	if (hypre_ParCSRMatrixWeightedDiag(matrix))
+	{
+		for (i = 0; i < local_num_rows; i++)
+		{
+			diag_data[diag_i[i]] += hypre_ParCSRMatrixWeightedDiag(matrix)[i];
+		}
+		hypre_TFree(hypre_ParCSRMatrixWeightedDiag(matrix));
+	}
+	if (hypre_ParCSRMatrixColMapOffdOld(matrix))
+ 	{
+		hypre_TFree(hypre_ParCSRMatrixColMapOffd(matrix));
+		hypre_ParCSRMatrixColMapOffd(matrix) = hypre_ParCSRMatrixColMapOffdOld(matrix);
+	}
+	if (hypre_ParCSRMatrixOffdOld(matrix))
+	{
+		hypre_CSRMatrixDestroy(hypre_ParCSRMatrixOffd(matrix));
+		hypre_ParCSRMatrixOffd(matrix) = hypre_ParCSRMatrixOffdOld(matrix);
+	}
+	//If offd_pattern exists, set sparse approx to 1 and create weighted diag
+	if (droptol > 0.0)
+	{
+		droptol *= 1000;
+	
+		//Initializations
+		HYPRE_Int           *col_droptol_max = hypre_ParCSRMatrixColDroptolMax(matrix);
+		HYPRE_Int           *row_droptol_max = hypre_ParCSRMatrixRowDroptolMax(matrix);
+		HYPRE_Int           *col_to_proc_map = hypre_ParCSRMatrixColToProcMap(matrix);
+		HYPRE_Int           *proc_row_map = hypre_ParCSRMatrixProcRowMap(matrix);
+		HYPRE_Int            num_sends = hypre_ParCSRCommPkgNumSends(hypre_ParCSRMatrixCommPkg(matrix));	
+
+		hypre_CSRMatrix     *offd = hypre_ParCSRMatrixOffd(matrix);
+		HYPRE_Int           *offd_i = hypre_CSRMatrixI(offd);
+		HYPRE_Int           *offd_j = hypre_CSRMatrixJ(offd);
+		HYPRE_Real          *offd_data = hypre_CSRMatrixData(offd);
+		
+		HYPRE_Int            nnz_offd = offd_i[local_num_rows];
+		HYPRE_Int           *aux_offd_j;
+		HYPRE_Int           *col_map_offd = hypre_ParCSRMatrixColMapOffd(matrix);
+		HYPRE_Int            num_cols_offd = hypre_CSRMatrixNumCols(offd);
+
+		HYPRE_Int            sparse_num_cols_offd = 0;
+		HYPRE_Int           *sparse_col_map_offd = NULL;
+		HYPRE_Real          *weighted_diag = hypre_CTAlloc(HYPRE_Real, local_num_rows);
+		HYPRE_Int            sparse_nnz_offd = 0;
+		hypre_CSRMatrix     *sparse_offd = NULL;
+		HYPRE_Int           *sparse_offd_i = NULL;
+		HYPRE_Int           *sparse_offd_j = NULL;
+		HYPRE_Real          *sparse_offd_data = NULL;
+		HYPRE_Int            sparse_ctr;
+		HYPRE_Int           *offd_pattern = hypre_CTAlloc(HYPRE_Int, nnz_offd);	
+	
+		HYPRE_Int            row_idx;
+
+		//Set Sparse Approximation Boolean to True
+		hypre_ParCSRMatrixSparseApprox(matrix) = 1;
+	
+        //Calculate NNZ in Sparse Offd
+		for (i = 0; i < local_num_rows; i++)
+		{
+			row_start = offd_i[i];
+			row_end = offd_i[i+1];
+			for (j = row_start; j < row_end; j++)
+			{
+				if (fabs(offd_data[j]) <= zero_tol) continue;
+				local_col = offd_j[j];
+				row_idx = proc_row_map[j]; 
+				if (col_droptol_max[local_col] > droptol && (row_idx > 0 && row_droptol_max[row_idx] > droptol))
+					offd_pattern[j] = 1;
+			}		
+		}
+
+		for (i = 0; i < nnz_offd; i++)
+			if (offd_pattern[i])
+				sparse_nnz_offd++;
+
+		if (sparse_nnz_offd)
+		{
+			aux_offd_j = hypre_CTAlloc(HYPRE_Int, sparse_nnz_offd);
+	 
+			sparse_ctr = 0;
+			for (i=0; i < nnz_offd; i++)
+			{
+				if (offd_pattern[i])
+					aux_offd_j[sparse_ctr++] = col_map_offd[ offd_j[i] ];
+			}
+			hypre_qsort0(aux_offd_j,0,sparse_nnz_offd-1);
+			sparse_num_cols_offd = 1;
+			for (i=0; i < sparse_nnz_offd-1; i++)
+			{
+				if (aux_offd_j[i+1] > aux_offd_j[i])
+					aux_offd_j[sparse_num_cols_offd++] = aux_offd_j[i+1];
+			}
+			sparse_col_map_offd = hypre_CTAlloc(HYPRE_Int,sparse_num_cols_offd);
+			for (i=0; i < sparse_num_cols_offd; i++)
+				sparse_col_map_offd[i] = aux_offd_j[i];
+#ifdef HYPRE_USING_OPENMP
+#pragma omp parallel for private(i)
+#endif
+
+			hypre_TFree(aux_offd_j);
+			
+		}
+
+		//Initialize Sparse Offd Matrix
+		sparse_offd = hypre_CSRMatrixCreate(local_num_rows,
+						sparse_num_cols_offd,
+						sparse_nnz_offd);
+		hypre_CSRMatrixInitialize(sparse_offd);
+
+		sparse_offd_i = hypre_CSRMatrixI(sparse_offd);
+		sparse_offd_j = hypre_CSRMatrixJ(sparse_offd);
+		sparse_offd_data = hypre_CSRMatrixData(sparse_offd);
+		
+		
+		HYPRE_Int *map_to_sparse = NULL;
+		
+		if (sparse_num_cols_offd)
+		{
+			map_to_sparse = hypre_CTAlloc(HYPRE_Int, num_cols_offd);
+			sparse_ctr = 0;
+			for (i = 0; i < num_cols_offd; i++)
+			{
+				if (col_map_offd[i] == sparse_col_map_offd[sparse_ctr])
+				{
+					map_to_sparse[i] = sparse_ctr++;
+				}
+				else
+					map_to_sparse[i] = -1;
+			}
+		}
+		
+		sparse_ctr = 0;
+		for (i = 0; i < local_num_rows; i++)
+		{
+			weighted_diag[i] = 0;
+			sparse_offd_i[i] = sparse_ctr;
+			row_start = offd_i[i];
+			row_end = offd_i[i+1];
+			for (j = row_start; j < row_end; j++)
+			{
+				if (!offd_pattern[j])
+				{
+					weighted_diag[i] += offd_data[j];
+				}
+				else
+				{
+					sparse_offd_j[ sparse_ctr ] = map_to_sparse[ offd_j[j] ];
+					sparse_offd_data[ sparse_ctr ] = offd_data[j];
+					sparse_ctr++;
+				}
+			}
+		}
+		sparse_offd_i[local_num_rows] = sparse_ctr;
+		
+
+		for (i = 0; i < local_num_rows; i++)
+		{
+			diag_data[diag_i[i]] += weighted_diag[i];
+		}
+		
+		hypre_CSRMatrixI(sparse_offd) = sparse_offd_i;
+		hypre_CSRMatrixJ(sparse_offd) = sparse_offd_j;
+		hypre_CSRMatrixData(sparse_offd) = sparse_offd_data;
+		
+		hypre_TFree(map_to_sparse);
+		hypre_TFree(offd_pattern);
+
+		hypre_ParCSRMatrixWeightedDiag(matrix) = weighted_diag;
+    		hypre_ParCSRMatrixColMapOffdOld(matrix) = hypre_ParCSRMatrixColMapOffd(matrix);
+		hypre_ParCSRMatrixColMapOffd(matrix) = sparse_col_map_offd;
+		hypre_ParCSRMatrixOffdOld(matrix) = hypre_ParCSRMatrixOffd(matrix);
+		hypre_ParCSRMatrixOffd(matrix) = sparse_offd;
+		
+	}
+	//Otherwise set sparse approx to 0
+	else
+	{
+		hypre_ParCSRMatrixSparseApprox(matrix) = 0;
+	}
+	
+
+	hypre_ParCSRMatrixSetDNumNonzeros(matrix);
+	hypre_ParCSRMatrixSetNumNonzeros(matrix);
+	
+	if (hypre_ParCSRMatrixCommPkg(matrix))
+		hypre_MatvecCommPkgDestroy(hypre_ParCSRMatrixCommPkg(matrix));
+	hypre_MatvecCommPkgCreate(matrix);
+	
+	return hypre_error_flag;
+}
+
+/*--------------------------------------------------------------------------
+ * hypre_ParCSRMatrixRowDroptolIdx
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+hypre_ParCSRMatrixRowDroptolIdx( hypre_ParCSRMatrix *matrix, HYPRE_Int row, HYPRE_Int col, HYPRE_Int *proc_ctr )
+{
+	hypre_ParCSRCommPkg *comm_pkg = hypre_ParCSRMatrixCommPkg(matrix);
+	HYPRE_Int *col_to_proc_map = hypre_ParCSRMatrixColToProcMap(matrix);
+	HYPRE_Int *send_map_starts = hypre_ParCSRCommPkgSendMapStarts(comm_pkg);
+	HYPRE_Int *send_map_elmts = hypre_ParCSRCommPkgSendMapElmts(comm_pkg);
+
+	HYPRE_Int k, r;
+
+	k = col_to_proc_map[col];
+	if (k == -1)
+	{
+		return -1;
+	}
+
+        for (r = proc_ctr[k]; r < send_map_starts[k+1]; r++)
+        {
+                if (send_map_elmts[r] == row)
+                {
+                        proc_ctr[k] = r;
+                        return r;
+                }
+        }
+
+	return -1;
+
+}
+
+/*--------------------------------------------------------------------------
+ * hypre_ParCSRMatrixCreateProcRowMap
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+hypre_ParCSRMatrixCreateProcRowMap( hypre_ParCSRMatrix *matrix)
+{
+	hypre_ParCSRCommPkg *comm_pkg = hypre_ParCSRMatrixCommPkg(matrix);
+
+	HYPRE_Int num_sends = hypre_ParCSRCommPkgNumSends(comm_pkg);
+	HYPRE_Int *send_map_starts = hypre_ParCSRCommPkgSendMapStarts(comm_pkg);
+	HYPRE_Int *send_map_elmts = hypre_ParCSRCommPkgSendMapElmts(comm_pkg);
+	HYPRE_Int *col_to_proc_map = hypre_ParCSRMatrixColToProcMap(matrix);
+
+	hypre_CSRMatrix *offd = hypre_ParCSRMatrixOffd(matrix);
+	HYPRE_Int *offd_i = hypre_CSRMatrixI(offd);
+	HYPRE_Int *offd_j = hypre_CSRMatrixJ(offd);
+	HYPRE_Int num_rows = hypre_CSRMatrixNumRows(offd);
+	HYPRE_Int nnz_offd = offd_i[num_rows];	
+	
+	HYPRE_Int *proc_row_map = hypre_CTAlloc(HYPRE_Int, nnz_offd);
+	HYPRE_Int *proc_ctr = hypre_CTAlloc(HYPRE_Int, num_sends);
+	HYPRE_Int i, j, k, r, row_start, row_end, proc_start, proc_end, proc_found;
+
+	for (k = 0; k < num_sends; k++)
+	{
+		row_start = send_map_starts[k];
+		row_end = send_map_starts[k+1];
+		hypre_qsort0(send_map_elmts, row_start, row_end-1);
+	        proc_ctr[k] = row_start;
+        }
+
+	for (i = 0; i < num_rows; i++)
+	{
+		row_start = offd_i[i];
+		row_end = offd_i[i+1];
+		for (j = row_start; j < row_end; j++)
+		{
+			proc_row_map[j] = hypre_ParCSRMatrixRowDroptolIdx(matrix, i, offd_j[j], proc_ctr);
+		}
+	}
+
+	hypre_ParCSRMatrixProcRowMap(matrix) = proc_row_map;
+
+	hypre_TFree(proc_ctr);
+
+    return 0;
+}
+
+/*--------------------------------------------------------------------------
+ * hypre_ParCSRMatrixMapColsToProcs
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+hypre_ParCSRMatrixMapColsToProcs( hypre_ParCSRMatrix *matrix )
+{
+	hypre_ParCSRCommPkg *comm_pkg = hypre_ParCSRMatrixCommPkg(matrix);
+
+	HYPRE_Int num_recvs = hypre_ParCSRCommPkgNumRecvs(comm_pkg);
+	HYPRE_Int *recv_procs = hypre_ParCSRCommPkgRecvProcs(comm_pkg);
+	HYPRE_Int *recv_vec_starts = hypre_ParCSRCommPkgRecvVecStarts(comm_pkg);
+	HYPRE_Int num_cols_offd = hypre_CSRMatrixNumCols(hypre_ParCSRMatrixOffd(matrix));
+
+	HYPRE_Int num_sends = hypre_ParCSRCommPkgNumSends(comm_pkg);
+	HYPRE_Int *send_procs = hypre_ParCSRCommPkgSendProcs(comm_pkg);
+
+	HYPRE_Int *col_to_proc_map = hypre_CTAlloc(HYPRE_Int, num_cols_offd);
+	HYPRE_Int i, k, r, found_proc, row_start, row_end;
+	HYPRE_Int proc;
+
+	k = 0;
+	r = 0;
+	for (i = 0; i < num_cols_offd; i++)
+	{
+		while (recv_vec_starts[k+1] <= i) k++;
+		proc = recv_procs[k];
+		while (r < num_sends-1 && send_procs[r] < proc) r++;
+		if (send_procs[r] == proc)
+			col_to_proc_map[i] = r;
+		else
+			col_to_proc_map[i] = -1;
+	}
+
+	hypre_ParCSRMatrixColToProcMap(matrix) = col_to_proc_map;
+
+	return 0;
 }

@@ -250,6 +250,7 @@ main( hypre_int argc,
 
    HYPRE_Real     *nongalerk_tol = NULL;
    HYPRE_Int       nongalerk_num_tol = 0;
+   HYPRE_Int       nongalerk_type = 0;
 
    HYPRE_Int *row_nums = NULL;
    HYPRE_Int *num_cols = NULL;
@@ -1100,6 +1101,11 @@ main( hypre_int argc,
          for (i = 0; i < nongalerk_num_tol; i++)
             nongalerk_tol[i] = atof(argv[arg_index++]);
       }
+      else if ( strcmp(argv[arg_index], "-nongalerk_type") == 0 )
+      {
+         arg_index++;
+         nongalerk_type = atoi(argv[arg_index++]);
+      }
       else if ( strcmp(argv[arg_index], "-print") == 0 )
       {
          arg_index++;
@@ -1343,6 +1349,8 @@ main( hypre_int argc,
       hypre_printf("  -var <val>         : schwarz smoother variant (0-3) \n");
       hypre_printf("  -blk_sm <val>      : same as '-smtype 6 -ov 0 -dom 1 -smlv <val>'\n");
       hypre_printf("  -nongalerk_tol <val> <list>    : specify the NonGalerkin drop tolerance\n");
+      hypre_printf("  -nongalerk_type <val>          : specify type of non-Galerkin sparsification\n");
+      hypre_printf("      0 = original\n      1 = sparse Galerkin (full lumping)\n      2 = hybrid Galerkin (full lumping)\n      3 = sparse Galerkin (diagonal lumping)\n      4 = hybrid Galerkin (diagonal lumping)\n");
       hypre_printf("                                   and list contains the values, where last value\n");
       hypre_printf("                                   in list is repeated if val < num_levels in AMG\n");
       exit(1);
@@ -2318,6 +2326,7 @@ main( hypre_int argc,
          HYPRE_BoomerAMGSetNonGalerkinTol(amg_solver, nongalerk_tol[nongalerk_num_tol-1]);
          for (i=0; i < nongalerk_num_tol-1; i++)
             HYPRE_BoomerAMGSetLevelNonGalerkinTol(amg_solver, nongalerk_tol[i], i);
+         HYPRE_BoomerAMGSetNonGalerkType(amg_solver, nongalerk_type);
       }
       if (build_rbm)
       {
@@ -2467,6 +2476,8 @@ main( hypre_int argc,
          HYPRE_BoomerAMGSetNonGalerkinTol(amg_solver, nongalerk_tol[nongalerk_num_tol-1]);
          for (i=0; i < nongalerk_num_tol-1; i++)
             HYPRE_BoomerAMGSetLevelNonGalerkinTol(amg_solver, nongalerk_tol[i], i);
+         
+         HYPRE_BoomerAMGSetNonGalerkType(amg_solver, nongalerk_type);
       }
  
       HYPRE_BoomerAMGSetup(amg_solver, parcsr_A, b, x);
@@ -2627,6 +2638,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          if (build_rbm)
          {
@@ -2777,6 +2790,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          HYPRE_PCGSetMaxIter(pcg_solver, mg_max_iter);
          HYPRE_PCGSetPrecond(pcg_solver,
@@ -2992,6 +3007,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          if (build_rbm)
          {
@@ -3132,6 +3149,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          HYPRE_GMRESSetMaxIter(pcg_solver, mg_max_iter);
          HYPRE_GMRESSetPrecond(pcg_solver,
@@ -3349,6 +3368,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          HYPRE_LGMRESSetMaxIter(pcg_solver, mg_max_iter);
          HYPRE_LGMRESSetPrecond(pcg_solver,
@@ -3519,6 +3540,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          HYPRE_FlexGMRESSetMaxIter(pcg_solver, mg_max_iter);
          HYPRE_FlexGMRESSetPrecond(pcg_solver,
@@ -3695,6 +3718,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          HYPRE_BiCGSTABSetMaxIter(pcg_solver, mg_max_iter);
          HYPRE_BiCGSTABSetPrecond(pcg_solver,
@@ -3906,6 +3931,8 @@ main( hypre_int argc,
             HYPRE_BoomerAMGSetNonGalerkinTol(pcg_precond, nongalerk_tol[nongalerk_num_tol-1]);
             for (i=0; i < nongalerk_num_tol-1; i++)
                HYPRE_BoomerAMGSetLevelNonGalerkinTol(pcg_precond, nongalerk_tol[i], i);
+
+            HYPRE_BoomerAMGSetNonGalerkType(pcg_precond, nongalerk_type);
          }
          HYPRE_CGNRSetMaxIter(pcg_solver, mg_max_iter);
          HYPRE_CGNRSetPrecond(pcg_solver,
