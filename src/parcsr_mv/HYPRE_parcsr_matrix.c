@@ -365,7 +365,7 @@ HYPRE_Int
 HYPRE_ParCSRMatrixUpdateSparseApprox( HYPRE_ParCSRMatrix matrix,
                                       HYPRE_Real droptol )
 {
-    return ( hypre_ParCSRMatrixUpdateSparseApprox(
+    return hypre_ParCSRMatrixUpdateSparseApprox(
                 (hypre_ParCSRMatrix *) matrix, 
                 droptol );
 }
