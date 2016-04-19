@@ -1,0 +1,9 @@
+Compile hypre as usual.  The variable nongalerk_type can now be set with:
+     HYPRE_BoomerAMGSetNonGalerkType( HYPRE_Solver solver, HYPRE_Int nongalerk_type );
+
+   The value of nongalerk_type yields the following:
+        0 - Original NonGalerkin
+        1 - Sparse Galerkin (with full lumping)
+        2 - Hybrid Galerkin (with full lumping)
+        3 - Diagonally-Lumped Sparse Galerkin
+        4 - Diagonally-Lumped Hybrid Galerkin
