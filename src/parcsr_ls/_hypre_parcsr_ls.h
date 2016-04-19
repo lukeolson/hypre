@@ -1433,6 +1433,8 @@ HYPRE_Int hypre_NonGalerkinIJBufferWrite ( HYPRE_IJMatrix B , HYPRE_Int *ijbuf_c
 HYPRE_Int hypre_NonGalerkinIJBufferEmpty ( HYPRE_IJMatrix B , HYPRE_Int ijbuf_size , HYPRE_Int *ijbuf_cnt , HYPRE_Int ijbuf_rowcounter , HYPRE_Real **ijbuf_data , HYPRE_Int **ijbuf_cols , HYPRE_Int **ijbuf_rownums , HYPRE_Int **ijbuf_numcols );
 hypre_ParCSRMatrix * hypre_NonGalerkinSparsityPattern(hypre_ParCSRMatrix *R_IAP, hypre_ParCSRMatrix *RAP, HYPRE_Int * CF_marker, HYPRE_Real droptol, HYPRE_Int sym_collapse, HYPRE_Int collapse_beta );
 HYPRE_Int hypre_BoomerAMGBuildNonGalerkinCoarseOperator( hypre_ParCSRMatrix **RAP_ptr, hypre_ParCSRMatrix *AP, HYPRE_Real strong_threshold, HYPRE_Real max_row_sum, HYPRE_Int num_functions, HYPRE_Int * dof_func_value, HYPRE_Real S_commpkg_switch, HYPRE_Int * CF_marker, HYPRE_Real droptol, HYPRE_Int sym_collapse, HYPRE_Real lump_percent, HYPRE_Int collapse_beta );
+HYPRE_Int hypre_NonGalerkinInitSparsityPattern(hypre_ParCSRMatrix *R_IAP, hypre_ParCSRMatrix *RAP, HYPRE_Int * CF_marker, hypre_MPI_Request *send_requests, hypre_MPI_Request *recv_requests, HYPRE_Int **send_buffer, HYPRE_Int **recv_buffer);
+HYPRE_Int hypre_NonGalerkinCompleteSparsityPattern(hypre_ParCSRMatrix *RAP, hypre_MPI_Request *send_requests, hypre_MPI_Request *recv_requests, HYPRE_Int **recv_buffer);
 
 /* par_rap.c */
 hypre_CSRMatrix *hypre_ExchangeRAPData ( hypre_CSRMatrix *RAP_int , hypre_ParCSRCommPkg *comm_pkg_RT );
