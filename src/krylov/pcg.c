@@ -50,7 +50,8 @@ hypre_PCGFunctionsCreate(
    HYPRE_Int    (*ScaleVector)   ( HYPRE_Complex alpha, void *x ),
    HYPRE_Int    (*Axpy)          ( HYPRE_Complex alpha, void *x, void *y ),
    HYPRE_Int    (*PrecondSetup)  ( void *vdata, void *A, void *b, void *x ),
-   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x )
+   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x ),
+   HYPRE_Int    (*PrecondUpdate) ( void *vdata )
    )
 {
    hypre_PCGFunctions * pcg_functions;
@@ -73,6 +74,7 @@ hypre_PCGFunctionsCreate(
 /* default preconditioner must be set here but can be changed later... */
    pcg_functions->precond_setup = PrecondSetup;
    pcg_functions->precond       = Precond;
+   pcg_functions->precond_update = PrecondUpdate;
 
    return pcg_functions;
 }
@@ -113,6 +115,11 @@ hypre_PCGCreate( hypre_PCGFunctions *pcg_functions )
    (pcg_data -> p)            = NULL;
    (pcg_data -> s)            = NULL;
    (pcg_data -> r)            = NULL;
+   (pcg_data -> iter_cnt)     = 0;
+   (pcg_data -> init_x)       = NULL;
+   (pcg_data -> update_rate)  = 3;
+   (pcg_data -> conv_tol)     = 0.9;
+   (pcg_data -> adaptive)     = 0;
 
    return (void *) pcg_data;
 }
@@ -158,6 +165,11 @@ hypre_PCGDestroy( void *pcg_vdata )
       {
          (*(pcg_functions->DestroyVector))(pcg_data -> r);
          pcg_data -> r = NULL;
+      }
+      if ( pcg_data -> init_x != NULL )
+      {
+         (*(pcg_functions->DestroyVector))(pcg_data -> init_x);
+         pcg_data -> init_x = NULL;
       }
       hypre_TFreeF( pcg_data, pcg_functions );
       hypre_TFreeF( pcg_functions, pcg_functions );
@@ -220,6 +232,9 @@ hypre_PCGSetup( void *pcg_vdata,
       (*(pcg_functions->MatvecDestroy))(pcg_data -> matvec_data);
    (pcg_data -> matvec_data) = (*(pcg_functions->MatvecCreate))(A, x);
 
+   (pcg_data -> init_x) = (*(pcg_functions->CreateVector))(x);
+   (*(pcg_functions->CopyVector))(x, (pcg_data->init_x));
+
    precond_setup(precond_data, A, b, x);
 
    /*-----------------------------------------------------
@@ -238,6 +253,8 @@ hypre_PCGSetup( void *pcg_vdata,
       (pcg_data -> rel_norms) = hypre_CTAllocF( HYPRE_Real, max_iter + 1,
                                                 pcg_functions );
    }
+
+   pcg_data -> iter_cnt = 0;
 
    return hypre_error_flag;
 }
@@ -288,6 +305,7 @@ hypre_PCGSolve( void *pcg_vdata,
    void           *r            = (pcg_data -> r);
    void           *matvec_data  = (pcg_data -> matvec_data);
    HYPRE_Int           (*precond)()   = (pcg_functions -> precond);
+   HYPRE_Int           (*precond_update)() = (pcg_functions -> precond_update);
    void           *precond_data = (pcg_data -> precond_data);
    HYPRE_Int             print_level  = (pcg_data -> print_level);
    HYPRE_Int             logging      = (pcg_data -> logging);
@@ -705,6 +723,19 @@ hypre_PCGSolve( void *pcg_vdata,
       }
       else
          (*(pcg_functions->CopyVector))(s, p);
+
+      
+      if (pcg_data->adaptive)
+      {
+         if (i >= (pcg_data->update_rate) && norms[i]/norms[i-1] > (pcg_data->conv_tol))
+         {
+            pcg_data -> iter_cnt = i;
+            precond_update( precond_data );
+            if (rel_norms[i] > 1.0) (*(pcg_functions->CopyVector))((pcg_data->init_x), x);
+            hypre_PCGSolve(pcg_data, A, b, x);
+            return 0;
+         }
+      }
    }
 
    /*--------------------------------------------------------------------
@@ -748,6 +779,41 @@ hypre_PCGGetTol( void   *pcg_vdata,
  
    return hypre_error_flag;
 }
+
+
+HYPRE_Int
+hypre_PCGSetUpdateRate( void *pcg_vdata,
+                    HYPRE_Int update_rate)
+{
+    hypre_PCGData *pcg_data = pcg_vdata;
+
+    (pcg_data -> update_rate) = update_rate;
+
+    return hypre_error_flag;
+}
+
+HYPRE_Int
+hypre_PCGSetConvTol( void *pcg_vdata,
+                    HYPRE_Real conv_tol )
+{
+    hypre_PCGData *pcg_data = pcg_vdata;
+
+    (pcg_data -> conv_tol) = conv_tol;
+
+    return hypre_error_flag;
+}
+
+HYPRE_Int
+hypre_PCGSetAdaptive( void *pcg_vdata,
+                    HYPRE_Int adaptive)
+{
+    hypre_PCGData *pcg_data = pcg_vdata;
+
+    (pcg_data -> adaptive) = adaptive;
+
+    return hypre_error_flag;
+}
+
 /*--------------------------------------------------------------------------
  * hypre_PCGSetAbsoluteTol, hypre_PCGGetAbsoluteTol
  *--------------------------------------------------------------------------*/
@@ -1041,6 +1107,7 @@ HYPRE_Int
 hypre_PCGSetPrecond( void  *pcg_vdata,
                      HYPRE_Int  (*precond)(),
                      HYPRE_Int  (*precond_setup)(),
+                     HYPRE_Int  (*precond_update)(),
                      void  *precond_data )
 {
    hypre_PCGData *pcg_data = pcg_vdata;
@@ -1049,6 +1116,7 @@ hypre_PCGSetPrecond( void  *pcg_vdata,
  
    (pcg_functions -> precond)       = precond;
    (pcg_functions -> precond_setup) = precond_setup;
+   (pcg_functions -> precond_update) = precond_update;
    (pcg_data -> precond_data)  = precond_data;
  
    return hypre_error_flag;

@@ -464,3 +464,8 @@ hypre_printf("iter = %d, rel_norm = %e\n", i, rel_norms[i]);
    return ierr;
 }
 
+HYPRE_Int
+hypre_SparseMSGUpdate ( void* smsg_vdata )
+{
+    return 0;
+}

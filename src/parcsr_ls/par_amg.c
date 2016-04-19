@@ -80,6 +80,9 @@ hypre_BoomerAMGCreate()
    HYPRE_Real   relax_wt;
    HYPRE_Real   outer_wt;
    HYPRE_Real   nongalerkin_tol;
+   HYPRE_Real  *nongalerk_new_tol;
+   HYPRE_Int    nongalerk_new_num_tol;
+   HYPRE_Int    nongalerk_num_updates;
    HYPRE_Int      smooth_type;
    HYPRE_Int      smooth_num_levels;
    HYPRE_Int      smooth_num_sweeps;
@@ -213,6 +216,14 @@ hypre_BoomerAMGCreate()
    debug_flag = 0;
 
    nongalerkin_tol = 0.0;
+   nongalerk_new_num_tol = 5;
+   nongalerk_new_tol = hypre_CTAlloc(HYPRE_Real, 5);
+   nongalerk_new_tol[0] = 0.5;
+   nongalerk_new_tol[1] = 0.1;
+   nongalerk_new_tol[2] = 0.05;
+   nongalerk_new_tol[3] = 0.01;
+   nongalerk_new_tol[4] = 0.0;
+   nongalerk_num_updates = 3;
    /*-----------------------------------------------------------------------
     * Create the hypre_ParAMGData structure and return
     *-----------------------------------------------------------------------*/
@@ -315,6 +326,7 @@ hypre_BoomerAMGCreate()
    hypre_ParAMGDataAArray(amg_data) = NULL;
    hypre_ParAMGDataPArray(amg_data) = NULL;
    hypre_ParAMGDataRArray(amg_data) = NULL;
+   hypre_ParAMGDataQArray(amg_data) = NULL;
    hypre_ParAMGDataCFMarkerArray(amg_data) = NULL;
    hypre_ParAMGDataVtemp(amg_data)  = NULL;
    hypre_ParAMGDataRtemp(amg_data)  = NULL;
@@ -377,6 +389,9 @@ hypre_BoomerAMGCreate()
 
    hypre_ParAMGDataNonGalerkinTol(amg_data) = nongalerkin_tol;
    hypre_ParAMGDataNonGalTolArray(amg_data) = NULL;
+   hypre_ParAMGDataNonGalerkNumUpdates(amg_data) = nongalerk_num_updates;
+   hypre_ParAMGDataNonGalerkNewNumTol(amg_data) = nongalerk_new_num_tol;
+   hypre_ParAMGDataNonGalerkNewTol(amg_data) = nongalerk_new_tol;
 
    hypre_ParAMGDataRAP2(amg_data) = 0;
    hypre_ParAMGDataKeepTranspose(amg_data) = 0;
@@ -434,6 +449,11 @@ hypre_BoomerAMGDestroy( void *data )
       hypre_TFree (hypre_ParAMGDataNonGalTolArray(amg_data));
       hypre_ParAMGDataNonGalTolArray(amg_data) = NULL; 
    }
+   if (hypre_ParAMGDataNonGalerkNewTol(amg_data))
+   {
+       hypre_TFree(hypre_ParAMGDataNonGalerkNewTol(amg_data));
+       hypre_ParAMGDataNonGalerkNewTol(amg_data) = NULL;
+   }
    if (hypre_ParAMGDataDofFunc(amg_data))
    {
       hypre_TFree (hypre_ParAMGDataDofFunc(amg_data));
@@ -456,6 +476,9 @@ hypre_BoomerAMGDestroy( void *data )
 
         if (hypre_ParAMGDataPArray(amg_data)[i-1])
            hypre_ParCSRMatrixDestroy(hypre_ParAMGDataPArray(amg_data)[i-1]);
+
+        if (hypre_ParAMGDataQArray(amg_data)[i-1])
+           hypre_ParCSRMatrixDestroy(hypre_ParAMGDataQArray(amg_data)[i-1]);
 
 	hypre_TFree(hypre_ParAMGDataCFMarkerArray(amg_data)[i-1]);
 
@@ -506,6 +529,7 @@ hypre_BoomerAMGDestroy( void *data )
    hypre_TFree(hypre_ParAMGDataABlockArray(amg_data));
    hypre_TFree(hypre_ParAMGDataPBlockArray(amg_data));
    hypre_TFree(hypre_ParAMGDataPArray(amg_data));
+   hypre_TFree(hypre_ParAMGDataQArray(amg_data));
    hypre_TFree(hypre_ParAMGDataCFMarkerArray(amg_data));
    if (hypre_ParAMGDataRtemp(amg_data))
       hypre_ParVectorDestroy(hypre_ParAMGDataRtemp(amg_data));
@@ -3727,6 +3751,45 @@ hypre_BoomerAMGSetNonGalerkTol( void   *data,
   hypre_ParAMGDataNonGalerkNumTol(amg_data) = nongalerk_num_tol;
   hypre_ParAMGDataNonGalerkTol(amg_data) = nongalerk_tol;
   return hypre_error_flag;
+}
+
+HYPRE_Int
+hypre_BoomerAMGSetNonGalerkType( void  *data,
+                             HYPRE_Int  nongalerk_type)
+{
+   hypre_ParAMGData *amg_data = data;
+
+   hypre_ParAMGDataNonGalerkType(amg_data) = nongalerk_type;
+   return hypre_error_flag;
+}
+
+HYPRE_Int
+hypre_BoomerAMGSetNonGalerkNewTol( void *data,
+                            HYPRE_Int nongalerk_new_num_tol,
+                            HYPRE_Real *nongalerk_new_tol)
+{
+    hypre_ParAMGData *amg_data = data;
+
+    if (hypre_ParAMGDataNonGalerkNewTol(amg_data))
+    {
+        hypre_TFree(hypre_ParAMGDataNonGalerkNewTol(amg_data));
+    }
+
+    hypre_ParAMGDataNonGalerkNewNumTol(amg_data) = nongalerk_new_num_tol;
+    hypre_ParAMGDataNonGalerkNewTol(amg_data) = nongalerk_new_tol;
+
+    return hypre_error_flag;
+}
+
+HYPRE_Int 
+hypre_BoomerAMGSetNonGalerkNumUpdates( void *data,
+                            HYPRE_Int nongalerk_num_updates)
+{
+    hypre_ParAMGData *amg_data = data;
+
+    hypre_ParAMGDataNonGalerkNumUpdates(amg_data) = nongalerk_num_updates;
+    
+    return hypre_error_flag;
 }
 
 HYPRE_Int

@@ -34,6 +34,7 @@ typedef struct
    HYPRE_Int             pcg_default;              /* boolean */
    HYPRE_Int           (*pcg_precond_solve)();
    HYPRE_Int           (*pcg_precond_setup)();
+   HYPRE_Int           (*pcg_precond_update)();
    void                 *pcg_precond;
 
    /* log info (always logged) */
@@ -76,6 +77,7 @@ hypre_HybridCreate( MPI_Comm  comm )
    (hybrid_data -> pcg_default)       = 1;
    (hybrid_data -> pcg_precond_solve) = NULL;
    (hybrid_data -> pcg_precond_setup) = NULL;
+   (hybrid_data -> pcg_precond_update) = NULL;
    (hybrid_data -> pcg_precond)       = NULL;
 
    /* initialize */
@@ -262,6 +264,7 @@ HYPRE_Int
 hypre_HybridSetPrecond( void  *pcg_vdata,
                         HYPRE_Int  (*pcg_precond_solve)(),
                         HYPRE_Int  (*pcg_precond_setup)(),
+                        HYPRE_Int  (*pcg_precond_update)(),
                         void  *pcg_precond          )
 {
    hypre_HybridData *pcg_data = pcg_vdata;
@@ -269,6 +272,7 @@ hypre_HybridSetPrecond( void  *pcg_vdata,
    (pcg_data -> pcg_default)       = 0;
    (pcg_data -> pcg_precond_solve) = pcg_precond_solve;
    (pcg_data -> pcg_precond_setup) = pcg_precond_setup;
+   (pcg_data -> pcg_precond_update) = pcg_precond_update;
    (pcg_data -> pcg_precond)       = pcg_precond;
  
    return hypre_error_flag;
@@ -414,6 +418,7 @@ hypre_HybridSolve( void               *hybrid_vdata,
    HYPRE_Int          pcg_default    = (hybrid_data -> pcg_default);
    HYPRE_Int        (*pcg_precond_solve)();
    HYPRE_Int        (*pcg_precond_setup)();
+   HYPRE_Int        (*pcg_precond_update)();
    void              *pcg_precond;
 
    void              *pcg_solver;
@@ -443,7 +448,8 @@ hypre_HybridSolve( void               *hybrid_vdata,
             hypre_StructKrylovInnerProd, hypre_StructKrylovCopyVector,
             hypre_StructKrylovClearVector,
             hypre_StructKrylovScaleVector, hypre_StructKrylovAxpy,
-            hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity );
+            hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity,
+            hypre_StructKrylovIdentityUpdate );
       pcg_solver = hypre_PCGCreate( pcg_functions );
 
       hypre_PCGSetMaxIter(pcg_solver, dscg_max_its);
@@ -461,6 +467,7 @@ hypre_HybridSolve( void               *hybrid_vdata,
       hypre_PCGSetPrecond(pcg_solver,
                           HYPRE_StructDiagScale,
                           HYPRE_StructDiagScaleSetup,
+                          HYPRE_StructDiagScaleUpdate,
                           pcg_precond);
       hypre_PCGSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
 
@@ -508,7 +515,8 @@ hypre_HybridSolve( void               *hybrid_vdata,
             hypre_StructKrylovInnerProd, hypre_StructKrylovCopyVector,
             hypre_StructKrylovClearVector,
             hypre_StructKrylovScaleVector, hypre_StructKrylovAxpy,
-            hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity );
+            hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity,
+            hypre_StructKrylovIdentityUpdate );
       pcg_solver = hypre_GMRESCreate( gmres_functions );
 
       hypre_GMRESSetMaxIter(pcg_solver, dscg_max_its);
@@ -526,6 +534,7 @@ hypre_HybridSolve( void               *hybrid_vdata,
       hypre_GMRESSetPrecond(pcg_solver,
                             HYPRE_StructDiagScale,
                             HYPRE_StructDiagScaleSetup,
+                            HYPRE_StructDiagScaleUpdate,
                             pcg_precond);
       hypre_GMRESSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
 
@@ -636,7 +645,8 @@ hypre_HybridSolve( void               *hybrid_vdata,
                hypre_StructKrylovInnerProd, hypre_StructKrylovCopyVector,
                hypre_StructKrylovClearVector,
                hypre_StructKrylovScaleVector, hypre_StructKrylovAxpy,
-               hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity );
+               hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity,
+               hypre_StructKrylovIdentityUpdate );
          pcg_solver = hypre_PCGCreate( pcg_functions );
 
          hypre_PCGSetMaxIter(pcg_solver, pcg_max_its);
@@ -663,7 +673,8 @@ hypre_HybridSolve( void               *hybrid_vdata,
                hypre_StructKrylovInnerProd, hypre_StructKrylovCopyVector,
                hypre_StructKrylovClearVector,
                hypre_StructKrylovScaleVector, hypre_StructKrylovAxpy,
-               hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity );
+               hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity,
+               hypre_StructKrylovIdentityUpdate );
          pcg_solver = hypre_GMRESCreate( gmres_functions );
 
          hypre_GMRESSetMaxIter(pcg_solver, pcg_max_its);
@@ -710,19 +721,21 @@ hypre_HybridSolve( void               *hybrid_vdata,
          hypre_SMGSetLogging(pcg_precond, 0);
          pcg_precond_solve = hypre_SMGSolve;
          pcg_precond_setup = hypre_SMGSetup;
+         pcg_precond_update = hypre_SMGUpdate;
       }
       else
       {
          pcg_precond       = (hybrid_data -> pcg_precond);
          pcg_precond_solve = (hybrid_data -> pcg_precond_solve);
          pcg_precond_setup = (hybrid_data -> pcg_precond_setup);
+         pcg_precond_update = (hybrid_data -> pcg_precond_update);
       }
 
       /* Complete setup of solver+SMG */
       if (solver_type == 1)
       {
          hypre_PCGSetPrecond(pcg_solver,
-                             pcg_precond_solve, pcg_precond_setup, pcg_precond);
+                             pcg_precond_solve, pcg_precond_setup, pcg_precond_update, pcg_precond);
          hypre_PCGSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
 
          /* Solve */
@@ -750,7 +763,7 @@ hypre_HybridSolve( void               *hybrid_vdata,
       else if (solver_type == 2)
       {
          hypre_GMRESSetPrecond(pcg_solver,
-                               pcg_precond_solve, pcg_precond_setup, pcg_precond);
+                               pcg_precond_solve, pcg_precond_setup, pcg_precond_update, pcg_precond);
          hypre_GMRESSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
 
          /* Solve */

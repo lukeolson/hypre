@@ -116,6 +116,9 @@ HYPRE_SStructSysPFMGSetup(HYPRE_SStructSolver solver,
                           HYPRE_SStructVector b,
                           HYPRE_SStructVector x);
 
+HYPRE_Int
+HYPRE_SStructSysPFMGUpdate ( HYPRE_SStructSolver solver );
+
 /**
  * Solve the system.
  **/
@@ -285,6 +288,9 @@ HYPRE_SStructSplitSetup(HYPRE_SStructSolver solver,
                         HYPRE_SStructMatrix A,
                         HYPRE_SStructVector b,
                         HYPRE_SStructVector x);
+
+HYPRE_Int
+HYPRE_SStructSplitUpdate ( HYPRE_SStructSolver solver );
 
 /**
  * Solve the system.
@@ -799,6 +805,7 @@ HYPRE_Int
 HYPRE_SStructPCGSetPrecond(HYPRE_SStructSolver          solver,
                            HYPRE_PtrToSStructSolverFcn  precond,
                            HYPRE_PtrToSStructSolverFcn  precond_setup,
+                           HYPRE_PtrToSStructSolverFcn  precond_update,
                            void                        *precond_solver);
 
 HYPRE_Int
@@ -829,6 +836,9 @@ HYPRE_SStructDiagScaleSetup(HYPRE_SStructSolver solver,
                             HYPRE_SStructMatrix A,
                             HYPRE_SStructVector y,
                             HYPRE_SStructVector x);
+
+HYPRE_Int
+HYPRE_SStructDiagScaleUpdate ( HYPRE_SStructSolver solver );
 
 /**
  * Solve routine for diagonal preconditioning.
@@ -917,6 +927,7 @@ HYPRE_Int
 HYPRE_SStructGMRESSetPrecond(HYPRE_SStructSolver          solver,
                              HYPRE_PtrToSStructSolverFcn  precond,
                              HYPRE_PtrToSStructSolverFcn  precond_setup,
+                             HYPRE_PtrToSStructSolverFcn  precond_udpate,
                              void                        *precond_solver);
 
 HYPRE_Int
@@ -1010,6 +1021,7 @@ HYPRE_Int
 HYPRE_SStructFlexGMRESSetPrecond(HYPRE_SStructSolver          solver,
                                  HYPRE_PtrToSStructSolverFcn  precond,
                                  HYPRE_PtrToSStructSolverFcn  precond_setup,
+                                 HYPRE_PtrToSStructSolverFcn  precond_update,
                                  void                        *precond_solver);
 
 HYPRE_Int

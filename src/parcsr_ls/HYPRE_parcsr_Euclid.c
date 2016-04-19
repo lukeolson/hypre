@@ -235,6 +235,18 @@ HYPRE_EuclidDestroy( HYPRE_Solver solver )
 }
 
 /*--------------------------------------------------------------------------
+ * HYPRE_EuclidUpdate - Update function for Euclid.
+ *--------------------------------------------------------------------------*/
+
+#undef __FUNC__
+#define __FUNC__ "HYPRE_EuclidUpdate"
+HYPRE_Int 
+HYPRE_EuclidUpdate( HYPRE_Solver solver )
+{
+  END_FUNC_VAL(0)
+}
+
+/*--------------------------------------------------------------------------
  * HYPRE_EuclidSetup - Set up function for Euclid.
  *--------------------------------------------------------------------------*/
 

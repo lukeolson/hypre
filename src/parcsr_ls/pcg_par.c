@@ -241,6 +241,12 @@ hypre_ParKrylovIdentitySetup( void *vdata,
    return 0;
 }
 
+HYPRE_Int
+hypre_ParKrylovIdentityUpdate ( void *vdata )
+{
+    return 0;
+}
+
 /*--------------------------------------------------------------------------
  * hypre_ParKrylovIdentity
  *--------------------------------------------------------------------------*/

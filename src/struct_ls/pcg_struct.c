@@ -199,6 +199,12 @@ hypre_StructKrylovIdentitySetup( void *vdata,
    return hypre_error_flag;
 }
 
+
+HYPRE_Int
+hypre_StructKrylovIdentityUpdate ( void *vdata )
+{
+    return hypre_error_flag;
+}
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 

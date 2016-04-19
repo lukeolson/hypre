@@ -269,6 +269,7 @@ hypre_F90_IFACE(hypre_structhybridsetprecond, HYPRE_STRUCTHYBRIDSETPRECOND)
               hypre_F90_PassObj (HYPRE_StructSolver, solver),
               HYPRE_StructSMGSolve,
               HYPRE_StructSMGSetup,
+              HYPRE_StructSMGUpdate,
               hypre_F90_PassObj (HYPRE_StructSolver, precond_solver)) );
    }
    else if (*precond_id == 1)
@@ -278,6 +279,7 @@ hypre_F90_IFACE(hypre_structhybridsetprecond, HYPRE_STRUCTHYBRIDSETPRECOND)
               hypre_F90_PassObj (HYPRE_StructSolver, solver),
               HYPRE_StructPFMGSolve,
               HYPRE_StructPFMGSetup,
+              HYPRE_StructPFMGUpdate,
               hypre_F90_PassObj (HYPRE_StructSolver, precond_solver)) );
    }
    else

@@ -113,6 +113,15 @@ HYPRE_Int HYPRE_PCGSolve(HYPRE_Solver solver,
 HYPRE_Int HYPRE_PCGSetTol(HYPRE_Solver solver,
                     HYPRE_Real   tol);
 
+HYPRE_Int HYPRE_PCGSetUpdateRate(HYPRE_Solver solver,
+                    HYPRE_Int update_rate);
+
+HYPRE_Int HYPRE_PCGSetConvTol(HYPRE_Solver solver,
+                    HYPRE_Real conv_tol);
+
+HYPRE_Int HYPRE_PCGSetAdaptive(HYPRE_Solver solver,
+                    HYPRE_Int adaptive);
+
 /**
  * (Optional) Set the absolute convergence tolerance (default is
  * 0). If one desires the convergence test to check the absolute
@@ -183,6 +192,7 @@ HYPRE_Int HYPRE_PCGSetRecomputeResidualP(HYPRE_Solver solver,
 HYPRE_Int HYPRE_PCGSetPrecond(HYPRE_Solver         solver,
                         HYPRE_PtrToSolverFcn precond,
                         HYPRE_PtrToSolverFcn precond_setup,
+                        HYPRE_PtrToSolverFcn precond_update,
                         HYPRE_Solver         precond_solver);
 
 /**
@@ -374,6 +384,7 @@ HYPRE_Int HYPRE_GMRESSetSkipRealResidualCheck(HYPRE_Solver solver,
 HYPRE_Int HYPRE_GMRESSetPrecond(HYPRE_Solver         solver,
                           HYPRE_PtrToSolverFcn precond,
                           HYPRE_PtrToSolverFcn precond_setup,
+                          HYPRE_PtrToSolverFcn precond_update,
                           HYPRE_Solver         precond_solver);
 
 /**
@@ -538,6 +549,7 @@ HYPRE_Int HYPRE_FlexGMRESSetKDim(HYPRE_Solver solver,
 HYPRE_Int HYPRE_FlexGMRESSetPrecond(HYPRE_Solver         solver,
                               HYPRE_PtrToSolverFcn precond,
                               HYPRE_PtrToSolverFcn precond_setup,
+                              HYPRE_PtrToSolverFcn precond_update,
                               HYPRE_Solver         precond_solver);
 
 /**

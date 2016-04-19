@@ -198,10 +198,12 @@ HYPRE_Int
 HYPRE_ParCSRHybridSetPrecond( HYPRE_Solver         solver,
                               HYPRE_PtrToParSolverFcn precond,
                               HYPRE_PtrToParSolverFcn precond_setup,
+                              HYPRE_PtrToParSolverFcn precond_update,
                               HYPRE_Solver         precond_solver )
 {
    return( hypre_AMGHybridSetPrecond( (void *) solver,
                                       precond, precond_setup,
+                                      precond_update,
                                       (void *) precond_solver ) );
 }
 

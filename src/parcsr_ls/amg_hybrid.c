@@ -41,6 +41,7 @@ typedef struct
    HYPRE_Int                   pcg_default;              /* boolean */
    HYPRE_Int                 (*pcg_precond_solve)();
    HYPRE_Int                 (*pcg_precond_setup)();
+   HYPRE_Int                 (*pcg_precond_update)();
    void                 *pcg_precond;
    void                 *pcg_solver;
 
@@ -108,6 +109,7 @@ hypre_AMGHybridCreate( )
    (AMGhybrid_data -> solver_type)       = 1;
    (AMGhybrid_data -> pcg_precond_solve) = NULL;
    (AMGhybrid_data -> pcg_precond_setup) = NULL;
+   (AMGhybrid_data -> pcg_precond_update) = NULL;
    (AMGhybrid_data -> pcg_precond)       = NULL;
    (AMGhybrid_data -> pcg_solver)       = NULL;
    
@@ -463,6 +465,7 @@ HYPRE_Int
 hypre_AMGHybridSetPrecond( void  *pcg_vdata,
                         HYPRE_Int  (*pcg_precond_solve)(),
                         HYPRE_Int  (*pcg_precond_setup)(),
+                        HYPRE_Int  (*pcg_precond_update)(),
                         void  *pcg_precond          )
 {
    hypre_AMGHybridData *pcg_data = pcg_vdata;
@@ -476,6 +479,7 @@ hypre_AMGHybridSetPrecond( void  *pcg_vdata,
    (pcg_data -> pcg_precond_solve) = pcg_precond_solve;
    (pcg_data -> pcg_precond_setup) = pcg_precond_setup;
    (pcg_data -> pcg_precond)       = pcg_precond;
+   (pcg_data -> pcg_precond_update)        = pcg_precond_update;
  
    return hypre_error_flag;
 }
@@ -1537,6 +1541,7 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
    HYPRE_Int                pcg_default;
    HYPRE_Int              (*pcg_precond_solve)();
    HYPRE_Int              (*pcg_precond_setup)();
+   HYPRE_Int              (*pcg_precond_update)();
    void              *pcg_precond;
 
    void              *pcg_solver;
@@ -1655,7 +1660,8 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
          hypre_ParKrylovInnerProd, hypre_ParKrylovCopyVector,
          hypre_ParKrylovClearVector,
          hypre_ParKrylovScaleVector, hypre_ParKrylovAxpy,
-         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity );
+         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity,
+         hypre_ParKrylovIdentityUpdate );
       pcg_solver = hypre_PCGCreate( pcg_functions );
                                                                                                                                         
       hypre_PCGSetMaxIter(pcg_solver, dscg_max_its);
@@ -1674,6 +1680,7 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
      hypre_PCGSetPrecond(pcg_solver,
                        HYPRE_ParCSRDiagScale,
                        HYPRE_ParCSRDiagScaleSetup,
+                       HYPRE_ParCSRDiagScaleUpdate,
                        pcg_precond);
      hypre_PCGSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
      (AMGhybrid_data -> pcg_solver) = pcg_solver;
@@ -1709,7 +1716,8 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
          hypre_ParKrylovInnerProd, hypre_ParKrylovCopyVector,
          hypre_ParKrylovClearVector,
          hypre_ParKrylovScaleVector, hypre_ParKrylovAxpy,
-         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity );
+         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity,
+         hypre_ParKrylovIdentityUpdate );
       pcg_solver = hypre_GMRESCreate( gmres_functions );
                                                                                                                                         
       hypre_GMRESSetMaxIter(pcg_solver, dscg_max_its);
@@ -1728,6 +1736,7 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
      hypre_GMRESSetPrecond(pcg_solver,
                        HYPRE_ParCSRDiagScale,
                        HYPRE_ParCSRDiagScaleSetup,
+                       HYPRE_ParCSRDiagScaleUpdate,
                        pcg_precond);
      hypre_GMRESSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
      (AMGhybrid_data -> pcg_solver) = pcg_solver;
@@ -1906,6 +1915,7 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
          }
          pcg_precond_solve = hypre_BoomerAMGSolve;
          pcg_precond_setup = hypre_BoomerAMGSetup;
+         pcg_precond_update = hypre_BoomerAMGUpdate;
          (AMGhybrid_data -> pcg_precond_setup) = pcg_precond_setup;
          (AMGhybrid_data -> pcg_precond_solve) = pcg_precond_solve;
          (AMGhybrid_data -> pcg_precond) = pcg_precond;
@@ -1917,6 +1927,7 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
          pcg_precond       = (AMGhybrid_data -> pcg_precond);
          pcg_precond_solve = (AMGhybrid_data -> pcg_precond_solve);
          pcg_precond_setup = (AMGhybrid_data -> pcg_precond_setup);
+         pcg_precond_update = (AMGhybrid_data -> pcg_precond_update);
          hypre_BoomerAMGSetSetupType(pcg_precond, setup_type);
       }
 
@@ -1924,7 +1935,7 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
       if (solver_type == 1)
       {
          hypre_PCGSetPrecond(pcg_solver,
-                          pcg_precond_solve, pcg_precond_setup, pcg_precond);
+                          pcg_precond_solve, pcg_precond_setup, pcg_precond_update, pcg_precond);
          hypre_PCGSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
 
          /* Solve */
@@ -1942,7 +1953,7 @@ hypre_AMGHybridSolve( void               *AMGhybrid_vdata,
       else if (solver_type == 2)
       {
          hypre_GMRESSetPrecond(pcg_solver,
-                          pcg_precond_solve, pcg_precond_setup, pcg_precond);
+                          pcg_precond_solve, pcg_precond_setup, pcg_precond_update, pcg_precond);
          hypre_GMRESSetup(pcg_solver, (void*) A, (void*) b, (void*) x);
 
          /* Solve */

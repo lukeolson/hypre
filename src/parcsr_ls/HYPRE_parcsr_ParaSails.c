@@ -108,6 +108,16 @@ HYPRE_ParCSRParaSailsDestroy( HYPRE_Solver solver )
 }
 
 /*--------------------------------------------------------------------------
+ * HYPRE_ParCSRParaSailsUpdate - Update function for ParaSails.
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int 
+HYPRE_ParCSRParaSailsUpdate( HYPRE_Solver solver )
+{
+  return 0;
+}
+
+/*--------------------------------------------------------------------------
  * HYPRE_ParCSRParaSailsSetup - Set up function for ParaSails.
  * This function is not called on subsequent times if the preconditioner is 
  * being reused.
@@ -343,6 +353,16 @@ HYPRE_ParaSailsDestroy( HYPRE_Solver solver )
    free(secret);
 
    return hypre_error_flag;
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_ParaSailsUpdate - Update function for ParaSails.
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int 
+HYPRE_ParaSailsUpdate( HYPRE_Solver solver )
+{
+  return 0;
 }
 
 /*--------------------------------------------------------------------------

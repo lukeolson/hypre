@@ -90,6 +90,13 @@ HYPRE_Int HYPRE_BoomerAMGCreate(HYPRE_Solver *solver);
 HYPRE_Int HYPRE_BoomerAMGDestroy(HYPRE_Solver solver);
 
 /**
+ * Update the AMG Solver hierarchy
+ *
+ * @param solver [IN] object to be set up.
+ **/
+HYPRE_Int HYPRE_BoomerAMGUpdate(HYPRE_Solver       solver );
+
+/**
  * Set up the BoomerAMG solver or preconditioner.  
  * If used as a preconditioner, this function should be passed
  * to the iterative solver {\tt SetPrecond} function.
@@ -281,6 +288,22 @@ HYPRE_Int HYPRE_BoomerAMGSetCoarsenType(HYPRE_Solver solver,
  **/
 HYPRE_Int HYPRE_BoomerAMGSetNonGalerkinTol (HYPRE_Solver solver,
                                           HYPRE_Real  nongalerkin_tol);
+
+/**
+ * (Optional) Defines the non-Galerkin sparsify type
+ * 0 for original non-Galerkin
+ * 1 for sparse Galerkin
+ * 2 for hybrid Galerkin
+ **/
+HYPRE_Int HYPRE_BoomerAMGSetNonGalerkType (HYPRE_Solver solver,
+                                           HYPRE_Int    nongalerk_type);
+
+HYPRE_Int HYPRE_BoomerAMGSetNonGalerkNewTol ( HYPRE_Solver solver,
+                                            HYPRE_Int nongalerk_new_num_tol,
+                                            HYPRE_Real *nongalerk_new_tol);
+
+HYPRE_Int HYPRE_BoomerAMGSetNonGalerkNumUpdates ( HYPRE_Solver solver,
+                                                HYPRE_Int nongalerk_num_updates);
 
 /**
  * (Optional) Defines the level specific non-Galerkin drop-tolerances
@@ -1120,6 +1143,9 @@ HYPRE_Int HYPRE_ParaSailsSetup(HYPRE_Solver       solver,
                                HYPRE_ParVector    b,
                                HYPRE_ParVector    x);
 
+HYPRE_Int HYPRE_ParaSailsUpdate( HYPRE_Solver solver );
+
+
 /**
  * Apply the ParaSails preconditioner.  This function should be passed
  * to the iterative solver {\tt SetPrecond} function.
@@ -1250,6 +1276,8 @@ HYPRE_Int HYPRE_ParCSRParaSailsCreate(MPI_Comm      comm,
 
 HYPRE_Int HYPRE_ParCSRParaSailsDestroy(HYPRE_Solver solver);
 
+HYPRE_Int HYPRE_ParCSRParaSailsUpdate( HYPRE_Solver solver );
+
 HYPRE_Int HYPRE_ParCSRParaSailsSetup(HYPRE_Solver       solver,
                                      HYPRE_ParCSRMatrix A,
                                      HYPRE_ParVector    b,
@@ -1329,6 +1357,8 @@ HYPRE_Int HYPRE_EuclidSetup(HYPRE_Solver       solver,
                             HYPRE_ParCSRMatrix A,
                             HYPRE_ParVector    b,
                             HYPRE_ParVector    x);
+
+HYPRE_Int HYPRE_EuclidUpdate( HYPRE_Solver solver );
 
 /**
  * Apply the Euclid preconditioner. This function should be passed
@@ -1463,6 +1493,8 @@ HYPRE_Int HYPRE_ParCSRPilutSolve(HYPRE_Solver       solver,
                                  HYPRE_ParCSRMatrix A,
                                  HYPRE_ParVector    b,
                                  HYPRE_ParVector    x);
+
+HYPRE_Int HYPRE_ParCSRPilutUpdate ( HYPRE_Solver solver );
 
 /**
  * (Optional) Set maximum number of iterations.
@@ -2092,6 +2124,7 @@ HYPRE_Int HYPRE_ParCSRPCGSetRelChange(HYPRE_Solver solver,
 HYPRE_Int HYPRE_ParCSRPCGSetPrecond(HYPRE_Solver            solver,
                                     HYPRE_PtrToParSolverFcn precond,
                                     HYPRE_PtrToParSolverFcn precond_setup,
+                                    HYPRE_PtrToParSolverFcn precond_update,
                                     HYPRE_Solver            precond_solver);
 
 HYPRE_Int HYPRE_ParCSRPCGGetPrecond(HYPRE_Solver  solver,
@@ -2109,6 +2142,7 @@ HYPRE_Int HYPRE_ParCSRPCGGetNumIterations(HYPRE_Solver  solver,
 HYPRE_Int HYPRE_ParCSRPCGGetFinalRelativeResidualNorm(HYPRE_Solver  solver,
                                                       HYPRE_Real   *norm);
 
+HYPRE_Int HYPRE_ParCSRDiagScaleUpdate ( HYPRE_Solver solver );
 /**
  * Setup routine for diagonal preconditioning.
  **/
@@ -2186,6 +2220,7 @@ HYPRE_Int HYPRE_ParCSRGMRESSetStopCrit(HYPRE_Solver solver,
 HYPRE_Int HYPRE_ParCSRGMRESSetPrecond(HYPRE_Solver             solver,
                                       HYPRE_PtrToParSolverFcn  precond,
                                       HYPRE_PtrToParSolverFcn  precond_setup,
+                                      HYPRE_PtrToParSolverFcn  precond_update,
                                       HYPRE_Solver             precond_solver);
 
 HYPRE_Int HYPRE_ParCSRGMRESGetPrecond(HYPRE_Solver  solver,
@@ -2259,6 +2294,7 @@ HYPRE_Int HYPRE_ParCSRFlexGMRESSetMaxIter(HYPRE_Solver solver,
 HYPRE_Int HYPRE_ParCSRFlexGMRESSetPrecond(HYPRE_Solver             solver,
                                           HYPRE_PtrToParSolverFcn  precond,
                                           HYPRE_PtrToParSolverFcn  precond_setup,
+                                          HYPRE_PtrToParSolverFcn  precond_update,
                                           HYPRE_Solver             precond_solver);
 
 HYPRE_Int HYPRE_ParCSRFlexGMRESGetPrecond(HYPRE_Solver  solver,
@@ -2544,6 +2580,7 @@ HYPRE_Int HYPRE_ParCSRHybridSetRelChange(HYPRE_Solver solver,
 HYPRE_Int HYPRE_ParCSRHybridSetPrecond(HYPRE_Solver            solver,
                                        HYPRE_PtrToParSolverFcn precond,
                                        HYPRE_PtrToParSolverFcn precond_setup,
+                                       HYPRE_PtrToParSolverFcn precond_update,
                                        HYPRE_Solver            precond_solver);
                     
 /**
@@ -2943,6 +2980,8 @@ HYPRE_ParCSRHybridSetNumGridSweeps(HYPRE_Solver  solver,
 HYPRE_Int HYPRE_SchwarzCreate(HYPRE_Solver *solver);
 
 HYPRE_Int HYPRE_SchwarzDestroy(HYPRE_Solver solver);
+
+HYPRE_Int HYPRE_SchwarzUpdate(HYPRE_Solver solver);
 
 HYPRE_Int HYPRE_SchwarzSetup(HYPRE_Solver       solver,
                              HYPRE_ParCSRMatrix A,

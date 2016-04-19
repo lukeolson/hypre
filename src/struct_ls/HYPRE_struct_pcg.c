@@ -32,7 +32,8 @@ HYPRE_StructPCGCreate( MPI_Comm comm, HYPRE_StructSolver *solver )
          hypre_StructKrylovInnerProd, hypre_StructKrylovCopyVector,
          hypre_StructKrylovClearVector,
          hypre_StructKrylovScaleVector, hypre_StructKrylovAxpy,
-         hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity );
+         hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity,
+         hypre_StructKrylovIdentityUpdate );
 
    *solver = ( (HYPRE_StructSolver) hypre_PCGCreate( pcg_functions ) );
 
@@ -126,11 +127,13 @@ HYPRE_Int
 HYPRE_StructPCGSetPrecond( HYPRE_StructSolver         solver,
                            HYPRE_PtrToStructSolverFcn precond,
                            HYPRE_PtrToStructSolverFcn precond_setup,
+                           HYPRE_PtrToStructSolverFcn precond_update,
                            HYPRE_StructSolver         precond_solver )
 {
    return( HYPRE_PCGSetPrecond( (HYPRE_Solver) solver,
                                 (HYPRE_PtrToSolverFcn) precond,
                                 (HYPRE_PtrToSolverFcn) precond_setup,
+                                (HYPRE_PtrToSolverFcn) precond_update,
                                 (HYPRE_Solver) precond_solver ) );
 }
 
@@ -181,6 +184,12 @@ HYPRE_StructDiagScaleSetup( HYPRE_StructSolver solver,
    return hypre_error_flag;
 }
 
+
+HYPRE_Int 
+HYPRE_StructDiagScaleUpdate ( HYPRE_StructSolver solver )
+{
+    return hypre_error_flag;
+}
 /*==========================================================================*/
 
 HYPRE_Int 

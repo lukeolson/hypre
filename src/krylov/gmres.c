@@ -42,7 +42,8 @@ hypre_GMRESFunctionsCreate(
    HYPRE_Int    (*ScaleVector)   ( HYPRE_Complex alpha, void *x ),
    HYPRE_Int    (*Axpy)          ( HYPRE_Complex alpha, void *x, void *y ),
    HYPRE_Int    (*PrecondSetup)  ( void *vdata, void *A, void *b, void *x ),
-   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x )
+   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x ),
+   HYPRE_Int    (*PrecondUpdate) ( void *vdata )
    )
 {
    hypre_GMRESFunctions * gmres_functions;
@@ -66,6 +67,7 @@ hypre_GMRESFunctionsCreate(
 /* default preconditioner must be set here but can be changed later... */
    gmres_functions->precond_setup = PrecondSetup;
    gmres_functions->precond       = Precond;
+   gmres_functions->precond_update = PrecondUpdate;
 
    return gmres_functions;
 }
@@ -266,6 +268,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
 
    HYPRE_Int 	           (*precond)()   = (gmres_functions -> precond);
    HYPRE_Int 	            *precond_data = (gmres_data -> precond_data);
+   HYPRE_Int               (*precond_update)() = (gmres_functions -> precond_update);
 
    HYPRE_Int             print_level    = (gmres_data -> print_level);
    HYPRE_Int             logging        = (gmres_data -> logging);
@@ -1108,6 +1111,7 @@ HYPRE_Int
 hypre_GMRESSetPrecond( void  *gmres_vdata,
                        HYPRE_Int  (*precond)(),
                        HYPRE_Int  (*precond_setup)(),
+                       HYPRE_Int  (*precond_update)(),
                        void  *precond_data )
 {
    hypre_GMRESData *gmres_data = gmres_vdata;
@@ -1116,6 +1120,7 @@ hypre_GMRESSetPrecond( void  *gmres_vdata,
  
    (gmres_functions -> precond)        = precond;
    (gmres_functions -> precond_setup)  = precond_setup;
+   (gmres_functions -> precond_update) = precond_update;
    (gmres_data -> precond_data)   = precond_data;
  
    return hypre_error_flag;

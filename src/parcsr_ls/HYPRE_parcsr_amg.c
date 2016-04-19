@@ -40,6 +40,16 @@ HYPRE_BoomerAMGDestroy( HYPRE_Solver solver )
 }
 
 /*--------------------------------------------------------------------------
+ * HYPRE_BoomerAMGUpdate
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int 
+HYPRE_BoomerAMGUpdate( HYPRE_Solver solver )
+{
+   return( hypre_BoomerAMGUpdate( (void *) solver ) );
+}
+
+/*--------------------------------------------------------------------------
  * HYPRE_BoomerAMGSetup
  *--------------------------------------------------------------------------*/
 
@@ -1602,6 +1612,31 @@ HYPRE_BoomerAMGSetNonGalerkTol (HYPRE_Solver solver,
                                 HYPRE_Real  *nongalerk_tol)
 {
    return (hypre_BoomerAMGSetNonGalerkTol ( (void *) solver, nongalerk_num_tol , nongalerk_tol ) );
+}
+
+HYPRE_Int
+HYPRE_BoomerAMGSetNonGalerkNewTol (HYPRE_Solver solver,
+                                   HYPRE_Int nongalerk_new_num_tol,
+                                   HYPRE_Real *nongalerk_new_tol)
+{
+    return (hypre_BoomerAMGSetNonGalerkNewTol ( (void *) solver, nongalerk_new_num_tol, nongalerk_new_tol ) );
+}
+
+HYPRE_Int
+HYPRE_BoomerAMGSetNonGalerkNumUpdates (HYPRE_Solver solver,
+                                       HYPRE_Int nongalerk_num_updates)
+{
+    return (hypre_BoomerAMGSetNonGalerkNumUpdates ( (void *) solver, nongalerk_num_updates) );
+}
+
+ /*--------------------------------------------------------------------------
+ * HYPRE_BoomerAMGSetNonGalerkType
+ *--------------------------------------------------------------------------*/
+HYPRE_Int
+HYPRE_BoomerAMGSetNonGalerkType (HYPRE_Solver solver,
+                                 HYPRE_Int    nongalerk_type)
+{
+   return (hypre_BoomerAMGSetNonGalerkType ( (void *) solver, nongalerk_type ) );
 }
 
 /*--------------------------------------------------------------------------

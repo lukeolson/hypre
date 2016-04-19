@@ -47,6 +47,11 @@ HYPRE_SStructSysPFMGSetup( HYPRE_SStructSolver  solver,
                                (hypre_SStructVector *) x ) );
 }
 
+HYPRE_Int
+HYPRE_SStructSysPFMGUpdate ( HYPRE_SStructSolver solver )
+{
+    return hypre_error_flag;
+}
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 

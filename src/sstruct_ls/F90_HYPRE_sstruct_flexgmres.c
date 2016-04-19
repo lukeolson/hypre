@@ -195,6 +195,7 @@ hypre_F90_IFACE(hypre_sstructflexgmressetprecond, HYPRE_SSTRUCTFLEXGMRESSETPRECO
              hypre_F90_PassObj (HYPRE_SStructSolver, solver),
              HYPRE_SStructSplitSolve,
              HYPRE_SStructSplitSetup,
+             HYPRE_SStructSplitUpdate,
              hypre_F90_PassObjRef (HYPRE_SStructSolver, precond_solver)));
    }
 
@@ -205,6 +206,7 @@ hypre_F90_IFACE(hypre_sstructflexgmressetprecond, HYPRE_SSTRUCTFLEXGMRESSETPRECO
              hypre_F90_PassObj (HYPRE_SStructSolver, solver),
              HYPRE_SStructSysPFMGSolve,
              HYPRE_SStructSysPFMGSetup,
+             HYPRE_SStructSysPFMGUpdate,
              hypre_F90_PassObjRef (HYPRE_SStructSolver, precond_solver)));
    }
 
@@ -215,6 +217,7 @@ hypre_F90_IFACE(hypre_sstructflexgmressetprecond, HYPRE_SSTRUCTFLEXGMRESSETPRECO
              hypre_F90_PassObj (HYPRE_SStructSolver, solver),
              HYPRE_SStructDiagScale,
              HYPRE_SStructDiagScaleSetup,
+             HYPRE_SStructDiagScaleUpdate,
              hypre_F90_PassObjRef (HYPRE_SStructSolver, precond_solver)));
    }
    else if(*precond_id == 9)

@@ -72,6 +72,7 @@ typedef struct
 
    HYPRE_Int    (*precond)       ();
    HYPRE_Int    (*precond_setup) ();
+   HYPRE_Int    (*precond_update)();
 
 } hypre_GMRESFunctions;
 
@@ -151,6 +152,7 @@ hypre_GMRESFunctionsCreate(
    HYPRE_Int    (*Axpy)          ( HYPRE_Complex alpha, void *x, void *y ),
    HYPRE_Int    (*PrecondSetup)  ( void *vdata, void *A, void *b, void *x ),
    HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x )
+   HYPRE_Int    (*PrecondUpdate) ( void *vdata )
    );
 
 /**

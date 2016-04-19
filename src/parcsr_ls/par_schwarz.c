@@ -174,6 +174,12 @@ hypre_SchwarzSetup(void               *schwarz_vdata,
 
 }
 
+HYPRE_Int
+hypre_SchwarzUpdate ( void *schwarz_data )
+{
+    return hypre_error_flag;
+}
+
 /*--------------------------------------------------------------------
  * hypre_SchwarzSolve
  *--------------------------------------------------------------------*/

@@ -36,7 +36,8 @@ HYPRE_ParCSRGMRESCreate( MPI_Comm comm, HYPRE_Solver *solver )
          hypre_ParKrylovInnerProd, hypre_ParKrylovCopyVector,
          hypre_ParKrylovClearVector,
          hypre_ParKrylovScaleVector, hypre_ParKrylovAxpy,
-         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity );
+         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity,
+         hypre_ParKrylovIdentityUpdate );
    *solver = ( (HYPRE_Solver) hypre_GMRESCreate( gmres_functions ) );
 
    return hypre_error_flag;
@@ -157,11 +158,13 @@ HYPRE_Int
 HYPRE_ParCSRGMRESSetPrecond( HYPRE_Solver          solver,
                              HYPRE_PtrToParSolverFcn  precond,
                              HYPRE_PtrToParSolverFcn  precond_setup,
+                             HYPRE_PtrToParSolverFcn  precond_update,
                              HYPRE_Solver          precond_solver )
 {
    return( HYPRE_GMRESSetPrecond( solver,
                                   (HYPRE_PtrToSolverFcn) precond,
                                   (HYPRE_PtrToSolverFcn) precond_setup,
+                                  (HYPRE_PtrToSolverFcn) precond_update,
                                   precond_solver ) );
 }
 

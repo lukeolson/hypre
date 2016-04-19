@@ -925,6 +925,7 @@ nested_A= hypre_CoarsenAMROp(fac_vdata, A);*/
       HYPRE_PCGSetPrecond((HYPRE_Solver) crse_solver,
                           (HYPRE_PtrToSolverFcn) HYPRE_SStructSysPFMGSolve,
                           (HYPRE_PtrToSolverFcn) HYPRE_SStructSysPFMGSetup,
+                          (HYPRE_PtrToSolverFcn) HYPRE_SStructSysPFMGUpdate,
                           (HYPRE_Solver) crse_precond);
 
       HYPRE_PCGSetup((HYPRE_Solver) crse_solver, 

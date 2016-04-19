@@ -451,6 +451,7 @@ typedef struct
 
    HYPRE_Int    (*precond)       ();
    HYPRE_Int    (*precond_setup) ();
+   HYPRE_Int    (*precond_update)();
 
 } hypre_GMRESFunctions;
 
@@ -529,7 +530,8 @@ hypre_GMRESFunctionsCreate(
    HYPRE_Int    (*ScaleVector)   ( HYPRE_Complex alpha, void *x ),
    HYPRE_Int    (*Axpy)          ( HYPRE_Complex alpha, void *x, void *y ),
    HYPRE_Int    (*PrecondSetup)  ( void *vdata, void *A, void *b, void *x ),
-   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x )
+   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x ),
+   HYPRE_Int    (*PrecondUpdate) ( void *vdata )
    );
 
 /**
@@ -790,6 +792,7 @@ typedef struct
 
    HYPRE_Int    (*precond)();
    HYPRE_Int    (*precond_setup)();
+   HYPRE_Int    (*precond_update)();
 
    HYPRE_Int    (*modify_pc)();
    
@@ -871,7 +874,8 @@ hypre_FlexGMRESFunctionsCreate(
    HYPRE_Int    (*ScaleVector)   ( HYPRE_Complex alpha, void *x ),
    HYPRE_Int    (*Axpy)          ( HYPRE_Complex alpha, void *x, void *y ),
    HYPRE_Int    (*PrecondSetup)  ( void *vdata, void *A, void *b, void *x ),
-   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x )
+   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x ),
+   HYPRE_Int    (*PrecondUpdate) ( void *vdata )
    );
 
 /**
@@ -961,6 +965,7 @@ typedef struct
 
    HYPRE_Int    (*precond)();
    HYPRE_Int    (*precond_setup)();
+   HYPRE_Int    (*precond_update)();
 
 } hypre_PCGFunctions;
 
@@ -1035,6 +1040,13 @@ typedef struct
    HYPRE_Real  *norms;
    HYPRE_Real  *rel_norms;
 
+   HYPRE_Int    iter_cnt;
+   void        *init_x;
+
+   HYPRE_Int    adaptive;
+   HYPRE_Int    update_rate;
+   HYPRE_Real   conv_tol;
+
 } hypre_PCGData;
 
 #define hypre_PCGDataOwnsMatvecData(pcgdata)  ((pcgdata) -> owns_matvec_data)
@@ -1074,7 +1086,8 @@ hypre_PCGFunctionsCreate(
    HYPRE_Int    (*ScaleVector)   ( HYPRE_Complex alpha, void *x ),
    HYPRE_Int    (*Axpy)          ( HYPRE_Complex alpha, void *x, void *y ),
    HYPRE_Int    (*PrecondSetup)  ( void *vdata, void *A, void *b, void *x ),
-   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x )
+   HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x ),
+   HYPRE_Int    (*PrecondUpdate) ( void *vdata )
    );
 
 /**
@@ -1151,7 +1164,7 @@ HYPRE_Int hypre_GMRESSetSkipRealResidualCheck ( void *gmres_vdata , HYPRE_Int sk
 HYPRE_Int hypre_GMRESGetSkipRealResidualCheck ( void *gmres_vdata , HYPRE_Int *skip_real_r_check );
 HYPRE_Int hypre_GMRESSetStopCrit ( void *gmres_vdata , HYPRE_Int stop_crit );
 HYPRE_Int hypre_GMRESGetStopCrit ( void *gmres_vdata , HYPRE_Int *stop_crit );
-HYPRE_Int hypre_GMRESSetPrecond ( void *gmres_vdata , HYPRE_Int (*precond )(), HYPRE_Int (*precond_setup )(), void *precond_data );
+HYPRE_Int hypre_GMRESSetPrecond ( void *gmres_vdata , HYPRE_Int (*precond )(), HYPRE_Int (*precond_setup )(), HYPRE_Int (*precond_update)(), void *precond_data );
 HYPRE_Int hypre_GMRESGetPrecond ( void *gmres_vdata , HYPRE_Solver *precond_data_ptr );
 HYPRE_Int hypre_GMRESSetPrintLevel ( void *gmres_vdata , HYPRE_Int level );
 HYPRE_Int hypre_GMRESGetPrintLevel ( void *gmres_vdata , HYPRE_Int *level );
@@ -1181,7 +1194,7 @@ HYPRE_Int hypre_FlexGMRESSetMaxIter ( void *fgmres_vdata , HYPRE_Int max_iter );
 HYPRE_Int hypre_FlexGMRESGetMaxIter ( void *fgmres_vdata , HYPRE_Int *max_iter );
 HYPRE_Int hypre_FlexGMRESSetStopCrit ( void *fgmres_vdata , HYPRE_Int stop_crit );
 HYPRE_Int hypre_FlexGMRESGetStopCrit ( void *fgmres_vdata , HYPRE_Int *stop_crit );
-HYPRE_Int hypre_FlexGMRESSetPrecond ( void *fgmres_vdata , HYPRE_Int (*precond )(), HYPRE_Int (*precond_setup )(), void *precond_data );
+HYPRE_Int hypre_FlexGMRESSetPrecond ( void *fgmres_vdata , HYPRE_Int (*precond )(), HYPRE_Int (*precond_setup )(), HYPRE_Int (*precond_update)(), void *precond_data );
 HYPRE_Int hypre_FlexGMRESGetPrecond ( void *fgmres_vdata , HYPRE_Solver *precond_data_ptr );
 HYPRE_Int hypre_FlexGMRESSetPrintLevel ( void *fgmres_vdata , HYPRE_Int level );
 HYPRE_Int hypre_FlexGMRESGetPrintLevel ( void *fgmres_vdata , HYPRE_Int *level );
@@ -1278,7 +1291,7 @@ HYPRE_Int HYPRE_GMRESSetRelChange ( HYPRE_Solver solver , HYPRE_Int rel_change )
 HYPRE_Int HYPRE_GMRESGetRelChange ( HYPRE_Solver solver , HYPRE_Int *rel_change );
 HYPRE_Int HYPRE_GMRESSetSkipRealResidualCheck ( HYPRE_Solver solver , HYPRE_Int skip_real_r_check );
 HYPRE_Int HYPRE_GMRESGetSkipRealResidualCheck ( HYPRE_Solver solver , HYPRE_Int *skip_real_r_check );
-HYPRE_Int HYPRE_GMRESSetPrecond ( HYPRE_Solver solver , HYPRE_PtrToSolverFcn precond , HYPRE_PtrToSolverFcn precond_setup , HYPRE_Solver precond_solver );
+HYPRE_Int HYPRE_GMRESSetPrecond ( HYPRE_Solver solver , HYPRE_PtrToSolverFcn precond , HYPRE_PtrToSolverFcn precond_setup , HYPRE_PtrToSolverFcn precond_update, HYPRE_Solver precond_solver );
 HYPRE_Int HYPRE_GMRESGetPrecond ( HYPRE_Solver solver , HYPRE_Solver *precond_data_ptr );
 HYPRE_Int HYPRE_GMRESSetPrintLevel ( HYPRE_Solver solver , HYPRE_Int level );
 HYPRE_Int HYPRE_GMRESGetPrintLevel ( HYPRE_Solver solver , HYPRE_Int *level );
@@ -1304,7 +1317,7 @@ HYPRE_Int HYPRE_FlexGMRESSetMinIter ( HYPRE_Solver solver , HYPRE_Int min_iter )
 HYPRE_Int HYPRE_FlexGMRESGetMinIter ( HYPRE_Solver solver , HYPRE_Int *min_iter );
 HYPRE_Int HYPRE_FlexGMRESSetMaxIter ( HYPRE_Solver solver , HYPRE_Int max_iter );
 HYPRE_Int HYPRE_FlexGMRESGetMaxIter ( HYPRE_Solver solver , HYPRE_Int *max_iter );
-HYPRE_Int HYPRE_FlexGMRESSetPrecond ( HYPRE_Solver solver , HYPRE_PtrToSolverFcn precond , HYPRE_PtrToSolverFcn precond_setup , HYPRE_Solver precond_solver );
+HYPRE_Int HYPRE_FlexGMRESSetPrecond ( HYPRE_Solver solver , HYPRE_PtrToSolverFcn precond , HYPRE_PtrToSolverFcn precond_setup , HYPRE_PtrToSolverFcn precond_update, HYPRE_Solver precond_solver );
 HYPRE_Int HYPRE_FlexGMRESGetPrecond ( HYPRE_Solver solver , HYPRE_Solver *precond_data_ptr );
 HYPRE_Int HYPRE_FlexGMRESSetPrintLevel ( HYPRE_Solver solver , HYPRE_Int level );
 HYPRE_Int HYPRE_FlexGMRESGetPrintLevel ( HYPRE_Solver solver , HYPRE_Int *level );
@@ -1349,6 +1362,9 @@ HYPRE_Int HYPRE_PCGSetup ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b
 HYPRE_Int HYPRE_PCGSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x );
 HYPRE_Int HYPRE_PCGSetTol ( HYPRE_Solver solver , HYPRE_Real tol );
 HYPRE_Int HYPRE_PCGGetTol ( HYPRE_Solver solver , HYPRE_Real *tol );
+HYPRE_Int HYPRE_PCGSetUpdateRate ( HYPRE_Solver solver, HYPRE_Int update_rate );
+HYPRE_Int HYPRE_PCGSetConvTol ( HYPRE_Solver solver, HYPRE_Real conv_tol );
+HYPRE_Int HYPRE_PCGSetAdaptive ( HYPRE_Solver solver, HYPRE_Int adaptive );
 HYPRE_Int HYPRE_PCGSetAbsoluteTol ( HYPRE_Solver solver , HYPRE_Real a_tol );
 HYPRE_Int HYPRE_PCGGetAbsoluteTol ( HYPRE_Solver solver , HYPRE_Real *a_tol );
 HYPRE_Int HYPRE_PCGSetAbsoluteTolFactor ( HYPRE_Solver solver , HYPRE_Real abstolf );
@@ -1369,7 +1385,7 @@ HYPRE_Int HYPRE_PCGSetRecomputeResidual ( HYPRE_Solver solver , HYPRE_Int recomp
 HYPRE_Int HYPRE_PCGGetRecomputeResidual ( HYPRE_Solver solver , HYPRE_Int *recompute_residual );
 HYPRE_Int HYPRE_PCGSetRecomputeResidualP ( HYPRE_Solver solver , HYPRE_Int recompute_residual_p );
 HYPRE_Int HYPRE_PCGGetRecomputeResidualP ( HYPRE_Solver solver , HYPRE_Int *recompute_residual_p );
-HYPRE_Int HYPRE_PCGSetPrecond ( HYPRE_Solver solver , HYPRE_PtrToSolverFcn precond , HYPRE_PtrToSolverFcn precond_setup , HYPRE_Solver precond_solver );
+HYPRE_Int HYPRE_PCGSetPrecond ( HYPRE_Solver solver , HYPRE_PtrToSolverFcn precond , HYPRE_PtrToSolverFcn precond_setup , HYPRE_PtrToSolverFcn precond_update, HYPRE_Solver precond_solver );
 HYPRE_Int HYPRE_PCGGetPrecond ( HYPRE_Solver solver , HYPRE_Solver *precond_data_ptr );
 HYPRE_Int HYPRE_PCGSetLogging ( HYPRE_Solver solver , HYPRE_Int level );
 HYPRE_Int HYPRE_PCGGetLogging ( HYPRE_Solver solver , HYPRE_Int *level );
@@ -1388,6 +1404,9 @@ HYPRE_Int hypre_PCGSetup ( void *pcg_vdata , void *A , void *b , void *x );
 HYPRE_Int hypre_PCGSolve ( void *pcg_vdata , void *A , void *b , void *x );
 HYPRE_Int hypre_PCGSetTol ( void *pcg_vdata , HYPRE_Real tol );
 HYPRE_Int hypre_PCGGetTol ( void *pcg_vdata , HYPRE_Real *tol );
+HYPRE_Int hypre_PCGSetUpdateRate ( void *pcg_vdata, HYPRE_Int update_rate );
+HYPRE_Int hypre_PCGSetConvTol ( void *pcg_vdata, HYPRE_Real conv_tol );
+HYPRE_Int hypre_PCGSetAdaptive ( void *pcg_vdata, HYPRE_Int adaptive );
 HYPRE_Int hypre_PCGSetAbsoluteTol ( void *pcg_vdata , HYPRE_Real a_tol );
 HYPRE_Int hypre_PCGGetAbsoluteTol ( void *pcg_vdata , HYPRE_Real *a_tol );
 HYPRE_Int hypre_PCGSetAbsoluteTolFactor ( void *pcg_vdata , HYPRE_Real atolf );
@@ -1409,7 +1428,7 @@ HYPRE_Int hypre_PCGGetRecomputeResidualP ( void *pcg_vdata , HYPRE_Int *recomput
 HYPRE_Int hypre_PCGSetStopCrit ( void *pcg_vdata , HYPRE_Int stop_crit );
 HYPRE_Int hypre_PCGGetStopCrit ( void *pcg_vdata , HYPRE_Int *stop_crit );
 HYPRE_Int hypre_PCGGetPrecond ( void *pcg_vdata , HYPRE_Solver *precond_data_ptr );
-HYPRE_Int hypre_PCGSetPrecond ( void *pcg_vdata , HYPRE_Int (*precond )(), HYPRE_Int (*precond_setup )(), void *precond_data );
+HYPRE_Int hypre_PCGSetPrecond ( void *pcg_vdata , HYPRE_Int (*precond )(), HYPRE_Int (*precond_setup )(), HYPRE_Int (*precond_update)(), void *precond_data );
 HYPRE_Int hypre_PCGSetPrintLevel ( void *pcg_vdata , HYPRE_Int level );
 HYPRE_Int hypre_PCGGetPrintLevel ( void *pcg_vdata , HYPRE_Int *level );
 HYPRE_Int hypre_PCGSetLogging ( void *pcg_vdata , HYPRE_Int level );

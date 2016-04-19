@@ -364,3 +364,68 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
    return hypre_error_flag;
 }
 
+/*--------------------------------------------------------------------
+ * hypre_BoomerAMGUpdate
+ *--------------------------------------------------------------------*/
+HYPRE_Int
+hypre_BoomerAMGUpdate ( void *amg_vdata )
+{
+    hypre_ParAMGData *amg_data = amg_vdata;
+
+    MPI_Comm comm;
+
+    hypre_ParCSRMatrix **A_array;
+
+    HYPRE_Real current_droptol, new_droptol;
+
+    HYPRE_Int num_updates;
+    HYPRE_Int new_num_tol;
+    HYPRE_Real *new_tol;
+
+    HYPRE_Int my_id;
+    HYPRE_Int nongalerk_type;
+    HYPRE_Int drop_ctr;
+    HYPRE_Int num_levels;
+    HYPRE_Int i;
+
+    A_array = hypre_ParAMGDataAArray(amg_data);
+    comm = hypre_ParCSRMatrixComm(A_array[0]);
+
+    hypre_MPI_Comm_rank(comm, &my_id);
+
+    nongalerk_type = hypre_ParAMGDataNonGalerkType(amg_data);
+    num_levels = hypre_ParAMGDataNumLevels(amg_data);
+
+    num_updates = hypre_ParAMGDataNonGalerkNumUpdates(amg_data);
+    new_num_tol = hypre_ParAMGDataNonGalerkNewNumTol(amg_data);
+    new_tol = hypre_ParAMGDataNonGalerkNewTol(amg_data);
+
+    int not_finished = 0;
+    for (drop_ctr = 0; drop_ctr < num_levels; drop_ctr++)
+    {
+        current_droptol = hypre_ParCSRMatrixDroptol(A_array[drop_ctr]);
+        if (current_droptol > 0.0)
+        {
+            not_finished = 1;
+            for (i = 0; i < new_num_tol; i++)
+            {
+                if (current_droptol > new_tol[i])
+                {
+                    new_droptol = new_tol[i];
+                    break;
+                }
+            }
+            if (current_droptol == new_droptol)
+            {
+                new_droptol = 0.0;
+            }
+            hypre_ParCSRMatrixUpdateSparseApprox(A_array[drop_ctr], new_droptol);
+            if (--num_updates == 0)
+                return 0;
+        }
+    }
+
+    /* If all droptols are 0.0, will return 1 */
+    return !(not_finished);
+}
+

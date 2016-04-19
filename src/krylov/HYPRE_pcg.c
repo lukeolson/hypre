@@ -75,6 +75,28 @@ HYPRE_PCGGetTol( HYPRE_Solver  solver,
 {
    return( hypre_PCGGetTol( (void *) solver, tol ) );
 }
+
+HYPRE_Int
+HYPRE_PCGSetUpdateRate( HYPRE_Solver solver,
+                 HYPRE_Int update_rate )
+{
+    return( hypre_PCGSetUpdateRate( (void *) solver, update_rate ) );
+}
+
+HYPRE_Int 
+HYPRE_PCGSetConvTol( HYPRE_Solver solver,
+                 HYPRE_Real conv_tol )
+{
+    return( hypre_PCGSetConvTol( (void *) solver, conv_tol ) );
+}
+
+HYPRE_Int
+HYPRE_PCGSetAdaptive( HYPRE_Solver solver,
+                    HYPRE_Int adaptive)
+{
+    return( hypre_PCGSetAdaptive( (void *) solver, adaptive ) );
+}
+
 /*--------------------------------------------------------------------------
  * HYPRE_PCGSetAbsoluteTol, HYPRE_PCGGetAbsoluteTol
  *--------------------------------------------------------------------------*/
@@ -265,10 +287,12 @@ HYPRE_Int
 HYPRE_PCGSetPrecond( HYPRE_Solver         solver,
                      HYPRE_PtrToSolverFcn precond,
                      HYPRE_PtrToSolverFcn precond_setup,
+                     HYPRE_PtrToSolverFcn precond_update,
                      HYPRE_Solver         precond_solver )
 {
    return( hypre_PCGSetPrecond( (void *) solver,
                                 precond, precond_setup,
+                                precond_update,
                                 (void *) precond_solver ) );
 }
 

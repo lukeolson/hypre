@@ -62,6 +62,11 @@ HYPRE_StructSMGSolve( HYPRE_StructSolver solver,
                            (hypre_StructVector *) x ) );
 }
 
+HYPRE_Int
+HYPRE_StructSMGUpdate ( HYPRE_StructSolver solver )
+{
+    return ( hypre_SMGUpdate ( (void *) solver ) );
+}
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 

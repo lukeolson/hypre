@@ -169,10 +169,12 @@ HYPRE_Int
 HYPRE_StructHybridSetPrecond( HYPRE_StructSolver         solver,
                               HYPRE_PtrToStructSolverFcn precond,
                               HYPRE_PtrToStructSolverFcn precond_setup,
+                              HYPRE_PtrToStructSolverFcn precond_update,
                               HYPRE_StructSolver         precond_solver )
 {
    return( hypre_HybridSetPrecond( (void *) solver,
                                    precond, precond_setup,
+                                   precond_update,
                                    (void *) precond_solver ) );
 }
 

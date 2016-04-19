@@ -28,7 +28,8 @@ HYPRE_StructFlexGMRESCreate( MPI_Comm comm, HYPRE_StructSolver *solver )
          hypre_StructKrylovInnerProd, hypre_StructKrylovCopyVector,
          hypre_StructKrylovClearVector,
          hypre_StructKrylovScaleVector, hypre_StructKrylovAxpy,
-         hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity );
+         hypre_StructKrylovIdentitySetup, hypre_StructKrylovIdentity,
+         hypre_StructKrylovIdentityUpdate );
 
    *solver = ( (HYPRE_StructSolver) hypre_FlexGMRESCreate( fgmres_functions ) );
 
@@ -113,11 +114,13 @@ HYPRE_Int
 HYPRE_StructFlexGMRESSetPrecond( HYPRE_StructSolver         solver,
                                  HYPRE_PtrToStructSolverFcn precond,
                                  HYPRE_PtrToStructSolverFcn precond_setup,
+                                 HYPRE_PtrToStructSolverFcn precond_update,
                                  HYPRE_StructSolver         precond_solver )
 {
    return( HYPRE_FlexGMRESSetPrecond( (HYPRE_Solver) solver,
                                       (HYPRE_PtrToSolverFcn) precond,
                                       (HYPRE_PtrToSolverFcn) precond_setup,
+                                      (HYPRE_PtrToSolverFcn) precond_update,
                                       (HYPRE_Solver) precond_solver ) );
 }
 

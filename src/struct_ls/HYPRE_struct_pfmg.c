@@ -62,6 +62,12 @@ HYPRE_StructPFMGSolve( HYPRE_StructSolver solver,
                             (hypre_StructVector *) x ) );
 }
 
+HYPRE_Int
+HYPRE_StructPFMGUpdate ( HYPRE_StructSolver solver )
+{
+    return hypre_PFMGUpdate ( (void *) solver );
+}
+
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 

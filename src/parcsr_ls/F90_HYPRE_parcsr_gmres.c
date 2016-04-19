@@ -215,6 +215,7 @@ hypre_F90_IFACE(hypre_parcsrgmressetprecond, HYPRE_PARCSRGMRESSETPRECOND)
               hypre_F90_PassObj (HYPRE_Solver, solver),
               HYPRE_ParCSRDiagScale,
               HYPRE_ParCSRDiagScaleSetup,
+              HYPRE_ParCSRDiagScaleUpdate,
               NULL                        ) );
    }
    else if (*precond_id == 2)
@@ -225,6 +226,7 @@ hypre_F90_IFACE(hypre_parcsrgmressetprecond, HYPRE_PARCSRGMRESSETPRECOND)
               hypre_F90_PassObj (HYPRE_Solver, solver),
               HYPRE_BoomerAMGSolve,
               HYPRE_BoomerAMGSetup,
+              HYPRE_BoomerAMGUpdate,
               (void *)       *precond_solver ) );
    }
    else if (*precond_id == 3)
@@ -234,6 +236,7 @@ hypre_F90_IFACE(hypre_parcsrgmressetprecond, HYPRE_PARCSRGMRESSETPRECOND)
               hypre_F90_PassObj (HYPRE_Solver, solver),
               HYPRE_ParCSRPilutSolve,
               HYPRE_ParCSRPilutSetup,
+              HYPRE_ParCSRPilutUpdate,
               (void *)       *precond_solver ) );
    }
    else if (*precond_id == 4)
@@ -243,6 +246,7 @@ hypre_F90_IFACE(hypre_parcsrgmressetprecond, HYPRE_PARCSRGMRESSETPRECOND)
               hypre_F90_PassObj (HYPRE_Solver, solver),
               HYPRE_ParCSRParaSailsSolve,
               HYPRE_ParCSRParaSailsSetup,
+              HYPRE_ParCSRParaSailsUpdate,
               (void *)       *precond_solver ) );
    } 
    else if (*precond_id == 5)
@@ -252,6 +256,7 @@ hypre_F90_IFACE(hypre_parcsrgmressetprecond, HYPRE_PARCSRGMRESSETPRECOND)
               hypre_F90_PassObj (HYPRE_Solver, solver),
               HYPRE_EuclidSolve,
               HYPRE_EuclidSetup,
+              HYPRE_EuclidUpdate,
               (void *)       *precond_solver ) );
    } 
    else

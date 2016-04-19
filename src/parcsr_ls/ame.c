@@ -403,6 +403,7 @@ HYPRE_Int hypre_AMESetup(void *esolver)
       HYPRE_PCGSetPrecond(ame_data -> B2_G,
                           (HYPRE_PtrToSolverFcn) HYPRE_BoomerAMGSolve,
                           (HYPRE_PtrToSolverFcn) HYPRE_BoomerAMGSetup,
+                          (HYPRE_PtrToSolverFcn) HYPRE_BoomerAMGUpdate,
                           ame_data -> B1_G);
 
       HYPRE_ParCSRPCGSetup(ame_data -> B2_G,

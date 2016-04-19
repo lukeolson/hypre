@@ -234,10 +234,12 @@ HYPRE_Int
 HYPRE_GMRESSetPrecond( HYPRE_Solver          solver,
                              HYPRE_PtrToSolverFcn  precond,
                              HYPRE_PtrToSolverFcn  precond_setup,
+                             HYPRE_PtrToSolverFcn  precond_update,
                              HYPRE_Solver          precond_solver )
 {
    return( hypre_GMRESSetPrecond( (void *) solver,
                                   precond, precond_setup,
+                                  precond_update,
                                   (void *) precond_solver ) );
 }
 

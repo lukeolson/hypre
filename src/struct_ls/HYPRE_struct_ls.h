@@ -112,6 +112,7 @@ HYPRE_Int HYPRE_StructJacobiSolve(HYPRE_StructSolver solver,
                             HYPRE_StructVector b,
                             HYPRE_StructVector x);
 
+HYPRE_Int HYPRE_StructJacobiUpdate ( HYPRE_StructSolver solver );
 /**
  * (Optional) Set the convergence tolerance.
  **/
@@ -551,6 +552,7 @@ HYPRE_Int HYPRE_StructPCGSetRelChange(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructPCGSetPrecond(HYPRE_StructSolver         solver,
                               HYPRE_PtrToStructSolverFcn precond,
                               HYPRE_PtrToStructSolverFcn precond_setup,
+                              HYPRE_PtrToStructSolverFcn precond_update,
                               HYPRE_StructSolver         precond_solver);
 
 HYPRE_Int HYPRE_StructPCGSetLogging(HYPRE_StructSolver solver,
@@ -575,6 +577,8 @@ HYPRE_Int HYPRE_StructDiagScaleSetup(HYPRE_StructSolver solver,
                                HYPRE_StructMatrix A,
                                HYPRE_StructVector y,
                                HYPRE_StructVector x);
+
+HYPRE_Int HYPRE_StructDiagScaleUpdate ( HYPRE_StructSolver solver );
 
 /**
  * Solve routine for diagonal preconditioning.
@@ -634,6 +638,7 @@ HYPRE_Int HYPRE_StructGMRESSetKDim(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructGMRESSetPrecond(HYPRE_StructSolver         solver,
                                 HYPRE_PtrToStructSolverFcn precond,
                                 HYPRE_PtrToStructSolverFcn precond_setup,
+                                HYPRE_PtrToStructSolverFcn precond_update,
                                 HYPRE_StructSolver         precond_solver);
 
 HYPRE_Int HYPRE_StructGMRESSetLogging(HYPRE_StructSolver solver,
@@ -699,6 +704,7 @@ HYPRE_Int HYPRE_StructFlexGMRESSetKDim(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructFlexGMRESSetPrecond(HYPRE_StructSolver         solver,
                                     HYPRE_PtrToStructSolverFcn precond,
                                     HYPRE_PtrToStructSolverFcn precond_setup,
+                                    HYPRE_PtrToStructSolverFcn precond_update,
                                     HYPRE_StructSolver         precond_solver);
 
 HYPRE_Int HYPRE_StructFlexGMRESSetLogging(HYPRE_StructSolver solver,
@@ -957,6 +963,7 @@ HYPRE_Int HYPRE_StructHybridSetKDim(HYPRE_StructSolver solver,
 HYPRE_Int HYPRE_StructHybridSetPrecond(HYPRE_StructSolver         solver,
                                  HYPRE_PtrToStructSolverFcn precond,
                                  HYPRE_PtrToStructSolverFcn precond_setup,
+                                 HYPRE_PtrToStructSolverFcn precond_update, 
                                  HYPRE_StructSolver         precond_solver);
 
 /**
@@ -1018,6 +1025,8 @@ HYPRE_Int HYPRE_StructSparseMSGSolve(HYPRE_StructSolver solver,
                                HYPRE_StructMatrix A,
                                HYPRE_StructVector b,
                                HYPRE_StructVector x);
+
+HYPRE_Int HYPRE_StructSparseMSGUpdate ( HYPRE_StructSolver solver );
 
 HYPRE_Int HYPRE_StructSparseMSGSetTol(HYPRE_StructSolver solver,
                                 HYPRE_Real         tol);

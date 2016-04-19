@@ -304,6 +304,12 @@ HYPRE_SStructSplitSetup( HYPRE_SStructSolver solver,
    return hypre_error_flag;
 }
 
+HYPRE_Int
+HYPRE_SStructSplitUpdate ( HYPRE_SStructSolver solver )
+{
+    return hypre_error_flag;
+}
+
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 

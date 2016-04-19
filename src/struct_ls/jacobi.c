@@ -90,6 +90,12 @@ hypre_JacobiSolve( void               *jacobi_vdata,
    return hypre_error_flag;
 }
 
+HYPRE_Int
+hypre_JacobiUpdate ( void *jacobi_vdata )
+{
+    return hypre_error_flag;
+}
+
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 

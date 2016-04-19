@@ -71,6 +71,7 @@ typedef struct
 
    HYPRE_Int    (*precond)();
    HYPRE_Int    (*precond_setup)();
+   HYPRE_Int    (*precond_update)();
 
 } hypre_PCGFunctions;
 
@@ -145,6 +146,13 @@ typedef struct
    HYPRE_Real  *norms;
    HYPRE_Real  *rel_norms;
 
+   HYPRE_Int    iter_cnt;
+   void        *init_x;
+
+   HYPRE_Int    update_rate;
+   HYPRE_Real   conv_tol;
+   HYPRE_Int    adaptive;
+
 } hypre_PCGData;
 
 #define hypre_PCGDataOwnsMatvecData(pcgdata)  ((pcgdata) -> owns_matvec_data)
@@ -185,6 +193,7 @@ hypre_PCGFunctionsCreate(
    HYPRE_Int    (*Axpy)          ( HYPRE_Complex alpha, void *x, void *y ),
    HYPRE_Int    (*PrecondSetup)  ( void *vdata, void *A, void *b, void *x ),
    HYPRE_Int    (*Precond)       ( void *vdata, void *A, void *b, void *x )
+   HYPRE_Int    (*PrecondUpdate) ( void *vdata )
    );
 
 /**

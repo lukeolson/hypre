@@ -35,7 +35,8 @@ HYPRE_ParCSRPCGCreate( MPI_Comm comm, HYPRE_Solver *solver )
          hypre_ParKrylovInnerProd, hypre_ParKrylovCopyVector,
          hypre_ParKrylovClearVector,
          hypre_ParKrylovScaleVector, hypre_ParKrylovAxpy,
-         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity );
+         hypre_ParKrylovIdentitySetup, hypre_ParKrylovIdentity,
+         hypre_ParKrylovIdentityUpdate );
    *solver = ( (HYPRE_Solver) hypre_PCGCreate( pcg_functions ) );
 
    return hypre_error_flag;
@@ -156,11 +157,13 @@ HYPRE_Int
 HYPRE_ParCSRPCGSetPrecond( HYPRE_Solver         solver,
                            HYPRE_PtrToParSolverFcn precond,
                            HYPRE_PtrToParSolverFcn precond_setup,
+                           HYPRE_PtrToParSolverFcn precond_update,
                            HYPRE_Solver         precond_solver )
 {
    return( HYPRE_PCGSetPrecond( solver,
                                 (HYPRE_PtrToSolverFcn) precond,
                                 (HYPRE_PtrToSolverFcn) precond_setup,
+                                (HYPRE_PtrToSolverFcn) precond_update,
                                 precond_solver ) );
 }
 
@@ -219,6 +222,16 @@ HYPRE_ParCSRPCGGetFinalRelativeResidualNorm( HYPRE_Solver  solver,
                                              HYPRE_Real   *norm   )
 {
    return( HYPRE_PCGGetFinalRelativeResidualNorm( solver, norm ) );
+}
+
+/*--------------------------------------------------------------------------
+ * HYPRE_ParCSRDiagScaleUpdate
+ *--------------------------------------------------------------------------*/
+ 
+HYPRE_Int 
+HYPRE_ParCSRDiagScaleUpdate( HYPRE_Solver solver )
+{
+   return 0;
 }
 
 /*--------------------------------------------------------------------------
