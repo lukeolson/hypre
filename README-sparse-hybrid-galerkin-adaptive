@@ -1,0 +1,50 @@
+Compile hypre as usual without FEI (--without-fei).  The following variables are now available to be set:
+
+    1. nongalerk_type:
+        HYPRE_BoomerAMGSetNonGalerkType(HYPRE_Solver solver, HYPRE_Int nongalerk_type)
+
+        0 - Original NonGalerkin
+        1 - Sparse Galerkin (Full Lumping)
+        2 - Hybrid Galerkin (Full Lumping)
+        3 - Diagonally-Lumped Sparse Galerkin
+        4 - Diagonally-Lumped Hybrid Galerkin
+
+    2. adaptive:
+        HYPRE_PCGSetAdaptive(HYPRE_Solver solver, HYPRE_Int adaptive)
+
+        0 - regular PCG solve
+        1 - adaptive PCG solve
+
+    3. nongalerk_new_tol
+        HYPRE_BoomerAMGSetNonGalerkNewTol(HYPRE_Solver solver,
+                HYPRE_Int nongalerk_new_num_tol, HYPRE_Real *nongalerk_new_tol)
+
+        Sets a list of drop tolerances to adapt to.  If entries are added back,
+        the next drop tolerance in this list is selected to be the new drop tolerance
+        at this level.
+
+
+    4. nongalerk_num_updates
+        HYPRE_BoomerAMGSetNonGalerkNumUpdates(HYPRE_Solver solver,
+                HYPRE_Int nongalerk_num_updates)
+
+        Sets the number of levels to be updated during one solve adaptation.
+
+    5. update_rate
+        HYPRE_PCGSetUpdateRate(HYPRE_Solver solver, HYPRE_Int update_rate)
+
+        Sets the minimum number of iterations the krylov solver must run before
+        entries are added back to the hierarchy.
+
+    6. conv_tol
+        HYPRE_PCGSetConvTol(HYPRE_Solver solver, HYPRE_Real conv_tol)
+
+        Sets a tolerance for the convergence factor.  Entries are added back to
+        the hierarchy only if the convergence factor is higher than this tolerance.
+
+
+NOTES:
+    - Adaptive solve only works with diagonally-lumped sparse/hybrid Galerkin
+        -nongalerk_type must be 3 or 4
+    - Adaptive solve is only implemented for PCG
+        - if any other solver is used, nothing will update during the solve
